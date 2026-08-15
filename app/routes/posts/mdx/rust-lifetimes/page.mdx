@@ -1,0 +1,361 @@
+---
+date: '2020-01-16T22:00:00'
+title: 'Rust lifetime parameters'
+tags: ['rust']
+published: true
+---
+import CliOutput from '/app/routes/posts/mdx-components/cli-output'
+
+I have found lifetime parameters in Rust (also called lifetime specifiers) to be one of the most difficult aspects of the language to get my head around, I hope that in this post I can explain what they are and how to use them. I'm going to assume a basic understanding of the syntax and concentrate on covering the bits that caused me confusion when I first started learning Rust.
+
+## What are lifetimes?
+
+Lifetimes are used to ensure that references to values (data in memory) do not live longer than the values themselves. Rust manages its memory by deleting any values which are not owned by a variable (see my post on ownership [here](/posts/rust-ownership)). Variables can only own a value whilst they are in scope, once a variable goes out of scope the value is deleted from memory. In order to ensure memory safety, lifetimes exist to make sure that any references to these values are also unable to still exist once the memory has been freed. 
+
+Here's an example of lifetimes in action:
+
+```ocaml
+fn main() {
+  let hello;
+    {
+      let greeting = "hello";
+      hello = &greeting;
+    }
+    println!("{}", hello);
+}
+```
+<CliOutput 
+  error
+  output={`error[E0597]: \`greeting\` does not live long enough
+--> src/bin/the_problem.rs:5:17
+|
+5 |         hello = &greeting;
+|                 ^^^^^^^^^ borrowed value does not live long enough
+6 |     }
+|     - \`greeting\` dropped here while still borrowed
+7 |     println!("{}", hello);
+|                    ----- borrow later used here
+  `} 
+/>
+
+The compiler is complaining because the variable `hello` is referencing a value (`greeting`) which is no longer in scope. It is preventing us from writing code which could leave us in a situation where a reference exists that points to memory which no longer holds the value which we expect it to be holding.
+
+Things do not work so well when functions are involved though:
+
+```ocaml
+fn main() {
+    let hello;
+    let unnecessary_argument = "ignore_this!";
+    {
+        let greeting = "hello";
+        hello = &greeting;
+    }
+    let output_string = get_output(hello, unnecessary_argument);
+    println!("{}", hello);
+}
+
+fn get_output(main: &str, extra: &str) -> &str {
+    main
+}
+```
+<CliOutput 
+  error
+  output={`error[E0106]: missing lifetime specifier
+--> src/bin/example_1_2.rs:12:43
+|
+12 | fn get_output(main: &str, extra: &str) -> &str {
+|                                           ^ expected lifetime parameter
+|
+= help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from \`main\` or \`extra\`
+  `}
+/>
+
+Now the compiler needs some help from us in the form of lifetime parameters. Lifetime parameters are a kind of generic type which Rust's type inference is able to work out in the body of functions but, since type inference is not allowed in function signatures (apart from in limited cases which I'll mention next), responsibility for annotating the lifetime parameters falls to the developer.
+
+Every reference has a lifetime parameter but we don't always get to see them because, in certain situations, Rust is able to add them at compile time (this is known as Lifetime Elision and you can read about it [here](https://doc.rust-lang.org/book/ch10-03-lifetime-syntax.html?highlight=elision#lifetime-elision)). One of the rules for elision is that if there is only one input lifetime parameter then that lifetime is assigned to all output parameters. We need to break this rule for the purposes of this example in order to get the error which I want to talk about, hence the `unnecessary_argument`!
+
+This time, we are using a function to get the `hello` value but the compiler is unable to work out that `greeting` doesn't live long enough because it doesn't have enough information about how the arguments to `get_output` and its return value are related to one another. This is the important piece of the puzzle which I failed to grasp at first:
+
+<p style={{fontSize:'25px',backgroundColor:'#ffff0042', padding: '5px'}}>
+  Lifetime parameters help the compiler fill in the blanks. They only map the relationship between the references which are given to and returned from a function. This means that the compiler can ensure the data being referenced will still be in memory when it is accessed.
+</p>
+
+
+Let's fix the signature to the `get_output` function so the compiler can work out that our code is still broken!
+
+```ocaml
+fn get_output<'a>(main: &'a str, extra: &str) -> &'a str {
+    main
+}
+```
+This function's signature is now telling the compiler that the reference which is returned is borrowed from the first argument, `main`. Notice that we have not added any lifetime parameters to `extra`, this is because it is irrelevant in this case. It's quite common (and I am also guilty of this) to spam all references with a lifetime parameter when you get this error and hope for the best. Doing so in this case does make the error go away, and is technically correct because we are saying that `extra` lives _at least_ as long as `main`, it's just that, in this function, the compiler doesn't care about it because there is no situation which results in it being returned. Also, it's good if we can only add the lifetime parameters which are needed because then it makes us look like we know what we're doing!
+
+If we run the code then we get our original error, it might not seem like a success but it is!
+<CliOutput 
+  error
+  output={`error[E0597]: \`greeting\` does not live long enough
+--> src/bin/the_problem.rs:5:17
+|
+5 |         hello = &greeting;
+|                 ^^^^^^^^^ borrowed value does not live long enough
+6 |     }
+|     - \`greeting\` dropped here while still borrowed
+7 |     println!("{}", hello);
+|                    ----- borrow later used here
+  `} 
+/>
+
+## Lifetimes on structs
+
+If you want to include a reference in any of a struct's fields then you are going to need to add lifetime parameters there too:
+
+```ocaml
+struct Thing {
+    name: &str,
+    category: &str,
+}
+
+impl Thing {
+    pub fn new(name: &str, category: &str) -> Thing {
+        Thing { name, category }
+    }
+}
+
+pub fn main() {
+    let category = "strange";
+    {
+        let name = "this";
+        let thing = Thing::new(name, category);
+        println!("{} is a {} thing", thing.name, thing.category);
+    }
+}
+```
+<CliOutput 
+  error
+  output={`error[E0106]: missing lifetime specifier
+--> src/bin/example_2_1.rs:2:11
+|
+2 |     name: &str,
+|           ^ expected lifetime parameter
+error[E0106]: missing lifetime specifier
+--> src/bin/example_2_1.rs:3:15
+|
+3 |     category: &str,
+|               ^ expected lifetime parameter  
+  `}
+/>
+
+Let's add some lifetime parameters to get our program to compile:
+
+```ocaml
+struct Thing<'a> {
+    name: &'a str,
+    category: &'a str,
+}
+
+impl<'a> Thing<'a> {
+    pub fn new(name: &'a str, category: &'a str) -> Thing<'a> {
+        Thing { name, category }
+    }
+}
+```
+First we declare a lifetime parameter on the struct, then we can use it on the fields. Here we are saying that both of the references on the fields need to live at least as long as the struct. Methods on the struct may also need lifetime parameters if they use references, these parameters can either be declared on the method signature (as we did earlier) or on the `impl` itself. Here we declare a lifetime which is then used by the struct. The parameter also remains in scope for any functions in the block so we do not need to declare the lifetime parameter again on the `new` function, we can just use it in its signature. 
+
+The signature for the `new` function tells the compiler that `name` and `category` need to live for at least as long as the returned instance of `Thing`. Let's run the code, this time it should be successful! 
+
+<CliOutput output="this is a strange thing" />
+
+However, if we look at `main` we can see that `name` and `category` have different lifetimes:
+
+```ocaml
+  pub fn main() {
+   |   let category = "strange";
+   |   {
+'a-|    |  let name = "this";
+   | 'b-|  let thing = Thing::new(name, category);
+   |    |  println!("{} is a {} thing", thing.name, thing.category);
+   |   }
+  } 
+```
+We may feel that we would like to make our signature more representative of what is actually happening and use two different lifetime parameters to represent the different lifetimes. There may even be occasions where we have no choice and have to use different lifetimes. There is a problem when we try to do this though: 
+  
+```ocaml
+struct Thing<'a> {
+    name: &'a str,
+    category: &'a str,
+}
+
+impl<'a, 'b> Thing<'b> {
+    pub fn new(name: &'b str, category: &'a str) -> Thing<'b> {
+        Thing { name, category }
+    }
+}
+```
+<CliOutput 
+  error
+  output={`error[E0495]: cannot infer an appropriate lifetime for lifetime parameter \`'a\` due to conflicting requirements
+--> src/bin/example_2_3.rs:8:9
+|
+8 |         Thing { name, category }
+|         ^^^^^
+|
+note: first, the lifetime cannot outlive the lifetime \`'a\` as defined on the impl at 6:6...
+--> src/bin/example_2_3.rs:6:6
+|
+6 | impl<'a, 'b> Thing<'b> {
+|      ^^
+note: ...so that reference does not outlive borrowed content
+--> src/bin/example_2_3.rs:8:23
+|
+8 |         Thing { name, category }
+|                       ^^^^^^^^
+note: but, the lifetime must be valid for the lifetime \`'b\` as defined on the impl at 6:10...
+--> src/bin/example_2_3.rs:6:10
+|
+6 | impl<'a, 'b> Thing<'b> {
+|          ^^
+= note: ...so that the expression is assignable:
+expected Thing<'b>
+found Thing<'_>
+  `}
+  />
+
+  Because we have told the compiler that `name` and `category` have different lifetimes, it can no longer be sure that both references will live for at least as long as the instance of `Thing`. Fortunately we can let the compiler know that `'a` lasts for at least as long as `'b` like so: 
+ ```ocaml
+  impl<'a: 'b, 'b> Thing<'b> {
+```
+And now our programme compiles again.
+
+## A challenge
+
+The thing with programming, and it's especially true for the complicated bits, is that reading about the theory only gets you part way towards understanding what's going on. Lifetimes parameters only really started to click with me after I had spent some time experimenting with them. That being said, I would like to propose that you copy & paste the following code into your editor or go to the [Rust Playground](https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&code=struct%20IntStruct%3C%27a%3E%20%7B%0A%20%20%20%20ref_to_int%3A%20%26%27a%20i32%2C%0A%7D%0A%0Apub%20fn%20main()%20%7B%0A%20%20%20%20let%20a%3A%20i32%20%3D%20100%3B%0A%20%20%20%20let%20b%3A%20i32%20%3D%20487%3B%0A%20%20%20%20let%20c%3A%20i32%20%3D%2012%3B%0A%0A%20%20%20%20let%20int_struct%3A%20IntStruct%20%3D%20IntStruct%20%7B%20ref_to_int%3A%20%26a%20%7D%3B%0A%0A%20%20%20%20let%20answer%3B%0A%20%20%20%20%7B%0A%20%20%20%20%20%20%20%20let%20scoped_struct%20%3D%20int_struct%3B%0A%20%20%20%20%20%20%20%20answer%20%3D%20some_process(%26a%2C%20%26b%2C%20%26c%2C%20%26scoped_struct)%3B%0A%20%20%20%20%7D%0A%20%20%20%20println!(%22%7B%7D%22%2C%20answer)%3B%0A%7D%0A%0Afn%20some_process%3C%27a%2C%20%27b%3E(a%3A%20%26%27a%20i32%2C%20b%3A%20%26i32%2C%20c%3A%20%26i32%2C%20a_struct%3A%20%26%27b%20IntStruct)%20-%3E%20%26%27a%20i32%20%7B%0A%20%20%20%20if%20*a%20%3D%3D%20101%20%7B%0A%20%20%20%20%20%20%20%20a_struct.ref_to_int%0A%20%20%20%20%7D%20else%20%7B%0A%20%20%20%20%20%20%20%20a%0A%20%20%20%20%7D%0A%7D%0A) and have a go at getting it to compile for yourself.
+
+```ocaml
+struct IntStruct {
+    ref_to_int: &i32,
+}
+
+pub fn main() {
+    let a: i32 = 100;
+    let b: i32 = 487;
+    let c: i32 = 12;
+
+    let int_struct: IntStruct = IntStruct { ref_to_int: &a };
+
+    let answer;
+    {
+        let scoped_struct = int_struct;
+        answer = some_process(&a, &b, &c, &scoped_struct);
+    }
+    println!("{}", answer);
+}
+
+fn some_process(a: &i32, b: &i32, c: &i32, a_struct: &IntStruct) -> &i32 {
+    if *a == 101 {
+        a_struct.ref_to_int
+    } else {
+        a
+    }
+}
+```
+
+Alternatively, here's an Iframe with the Rust Plaground in it - to be honest I've mainly just put this here to put some space between the challenge and the answer!
+
+<iframe width="100%" height="800px" src="https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&code=struct%20IntStruct%3C%27a%3E%20%7B%0A%20%20%20%20ref_to_int%3A%20%26%27a%20i32%2C%0A%7D%0A%0Apub%20fn%20main()%20%7B%0A%20%20%20%20let%20a%3A%20i32%20%3D%20100%3B%0A%20%20%20%20let%20b%3A%20i32%20%3D%20487%3B%0A%20%20%20%20let%20c%3A%20i32%20%3D%2012%3B%0A%0A%20%20%20%20let%20int_struct%3A%20IntStruct%20%3D%20IntStruct%20%7B%20ref_to_int%3A%20%26a%20%7D%3B%0A%0A%20%20%20%20let%20answer%3B%0A%20%20%20%20%7B%0A%20%20%20%20%20%20%20%20let%20scoped_struct%20%3D%20int_struct%3B%0A%20%20%20%20%20%20%20%20answer%20%3D%20some_process(%26a%2C%20%26b%2C%20%26c%2C%20%26scoped_struct)%3B%0A%20%20%20%20%7D%0A%20%20%20%20println!(%22%7B%7D%22%2C%20answer)%3B%0A%7D%0A%0Afn%20some_process%3C%27a%2C%20%27b%3E(a%3A%20%26%27a%20i32%2C%20b%3A%20%26i32%2C%20c%3A%20%26i32%2C%20a_struct%3A%20%26%27b%20IntStruct)%20-%3E%20%26%27a%20i32%20%7B%0A%20%20%20%20if%20*a%20%3D%3D%20101%20%7B%0A%20%20%20%20%20%20%20%20a_struct.ref_to_int%0A%20%20%20%20%7D%20else%20%7B%0A%20%20%20%20%20%20%20%20a%0A%20%20%20%20%7D%0A%7D%0A" />
+
+## The solution
+
+How did you get on? Let's work our way through this. We'll do the easy bit first; the IntStruct has one field which is a reference to an `i32`, we know that this reference is going to need to live for at least as long as the struct:
+
+```ocaml
+struct IntStruct<'a> {
+    ref_to_int: &'a i32,
+}
+```
+The next place we need to focus our attention is the `some_process` function. This function has four arguments but if we look at the body of the function we can see that it will only return either `a` or `a_struct.ref_to_int`. We can put an underscore in front of the variable names to make this clear and also to stop the warnings from the console:
+
+```ocaml
+fn some_process(a: &i32, _b: &i32, _c: &i32, a_struct: &IntStruct) -> &i32 {
+```
+
+Next we should take a look at the `main` function and work out the different scopes that are at play:
+
+```ocaml
+  pub fn main() {
+   |   let a: i32 = 100;
+   |   let b: i32 = 487;
+   |   let c: i32 = 12;
+   |
+   |   let int_struct: IntStruct = IntStruct { ref_to_int: &a };
+'a-|
+   |   let answer;
+   |   {
+   | 'b-|  let scoped_struct = int_struct;
+   |    |  answer = some_process(&a, &b, &c, &scoped_struct);
+   |   }
+   |   println!("{}", answer);
+  }
+```
+From this we can see that the first argument to `some_process`(`a`) has a lifetime of `'a`. The argument `a_struct` is a reference to `scoped_struct` which is created on line 10 and has a lifetime of `'b`. Let's add these lifetime parameters in and see if our code compiles:
+
+```ocaml
+fn some_process<'a, 'b>(a: &'a i32, _b: &i32, _c: &i32, a_struct: &'b IntStruct) -> &'a i32 {
+```
+
+<CliOutput 
+  error
+  output={`error[E0621]: explicit lifetime required in the type of \`a_struct\`
+--> src/bin/example_3_2.rs:22:9
+|
+20 | fn some_process<'a, 'b>(a: &'a i32, _b: &i32, _c: &i32, a_struct: &'b IntStruct) -> &'a i32 {
+|                                                                   ------------- help: add explicit lifetime \`'a\` to the type of \`a_struct\`: \`&'b IntStruct<'a>\`
+21 |     if *a == 101 {
+22 |         a_struct.ref_to_int
+|         ^^^^^^^^^^^^^^^^^^^ lifetime \`'a\` required
+  `}
+/>
+
+Remember the first change we made? We declared a lifetime parameter on `IntStruct`, now we just need to help the compiler by joining the dots by passing the lifetime parameter to it in the signature of the `some_process` function like so:
+
+```ocaml
+a_struct: &'b IntStruct<'a>
+```
+If you take a look at the snippet where we marked out the scopes you should be able to see that we can assign the lifetime parameter `'a` to `IntStruct` because the instance we are referencing was created on line 6.
+
+Let's run it again:
+<CliOutput output="100" />
+
+Success! Here's the working code in full:
+
+```ocaml
+struct IntStruct<'a> {
+    ref_to_int: &'a i32,
+}
+
+pub fn main() {
+    let a: i32 = 100;
+    let b: i32 = 487;
+    let c: i32 = 12;
+
+    let int_struct: IntStruct = IntStruct { ref_to_int: &a };
+
+    let answer;
+    {
+        let scoped_struct = int_struct;
+        answer = some_process(&a, &b, &c, &scoped_struct);
+    }
+    println!("{}", answer);
+}
+
+fn some_process<'a, 'b>(a: &'a i32, _b: &i32, _c: &i32, a_struct: &'b IntStruct<'a>) -> &'a i32 {
+    if *a == 101 {
+        a_struct.ref_to_int
+    } else {
+        a
+    }
+}
+```
+
+---
+
+So that's what I've managed to work out with regards to lifetime parameters, it's taken a while to click and I still wouldn't class myself as proficient but I'm getting there! The main lesson I have learnt is that oftentimes it's a lot easier to stop, trace the references and work out their scopes and relationships, than it is to blindly start adding lifetime parameters based on where the compiler says there are errors. I hope you have found this post useful, until next time. 

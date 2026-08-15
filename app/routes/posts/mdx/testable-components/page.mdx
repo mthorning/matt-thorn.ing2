@@ -1,0 +1,360 @@
+---
+date: '2020-05-10T12:00:00'
+title: 'Using Dependency Injection for Testing Components'
+tags: ['javascript', 'react', 'frontend', 'testing']
+published: true
+---
+
+import Table from './DependencyInjection'
+
+When I first started writing tests for React components I was mostly frustrated; spending large amounts of time trying to work out how to mock third party dependencies, API calls and ES6 imports. These days I use a technique called dependency injection which helps me to build my components in a way which makes them extremely easy to test. 
+
+## What is dependency injection?
+
+On [Wikipedia](https://en.wikipedia.org/wiki/Dependency_injection), dependency injection is defined as _"a technique in which an object receives other objects that it depends on"_. React makes this very easy for us as the whole framework is based around a system of passing props down to child components. Normally we think of passing variables down as a way of controlling flow but it is also just as valid to pass in whole chunks of logic for the components to use.
+
+As is traditional, let's start with an example. Here's the component we will be working with:
+
+```jsx
+import React, { useEffect } from "react";
+import Table from "./Table";
+
+export default function CarsTable() {
+
+  const columns = ["make", "model", "registration"];
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+      fetch('/cars')
+          .then(response => response.json())
+          .then(data => (
+               data.map(car => ({
+                 ...car,
+                 registration: (
+                   car.registration.slice(0, car.registration.length - 3) +
+                   " " +
+                   car.registration.slice(car.registration.length - 3)
+                 ).toUpperCase()
+               }));
+          ))
+          .then(() => setLoading(false));
+  }, []);
+
+  return <Table columns={columns} data={data} loading={loading} />;
+}
+```
+
+This component makes an API call to get some data, does some processing on the data to format the registration numbers and then passes it to a `Table` component. Click the button to see how the component looks when it is rendered:
+
+<Table />
+
+Exciting! So, I'm going to show you how I would go about testing this component, I will be making some changes to the component itself which will not only make it easier to test but will also make it more flexible in its main application use.
+
+## Injecting the Table
+The `Table` rendered by our component could be from a different file in our own codebase or it could be a third-party component from NPM. Either way, this component should have its own unit tests so we don't need to test that functionality here. The only thing we are concerned with is the props which are passed to it. A common method in testing this way is to stub the `Table` component; testing libraries such as Sinon and Jest offer ways to achieve this but I often find it a struggle to get them to work correctly.
+
+Instead of stubbing in the normal way, we can inject the `Table` component as a prop and then replace it with a mock function when we test.
+
+```jsx
+import React, { useEffect } from "react";
+-import Table from "./Table";
++import DefaultTable from "./Table";
+
+-export default function CarsTable() {
++export default function CarsTable({ Table }) {
+
+  const columns = ["make", "model", "registration"];
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+      fetch('/cars')
+          .then(response => response.json())
+          .then(data => (
+               data.map(car => ({
+                 ...car,
+                 registration: (
+                   car.registration.slice(0, car.registration.length - 3) +
+                   " " +
+                   car.registration.slice(car.registration.length - 3)
+                 ).toUpperCase()
+               }));
+          ))
+          .then(() => setLoading(false));
+  }, []);
+  
+  return <Table columns={columns} data={data} loading={loading} />;
+}
+
++CarsTable.defaultProps = {
++  Table: DefaultTable
++};
+
+```
+We're still importing `Table` at the top of the file but for clarity we're going to name it `DefaultTable`. Our component now gets `Table` as a prop and we will use the `defaultProps` property to set it to use `DefaultTable` if that prop is undefined. Now we can write our first test by passing in a mock function instead of `Table`:
+
+```jsx
+import React from "react";
+import { create, act } from "react-test-renderer";
+import CarsTable from "./CarsTable";
+
+describe("CarsTable component", () => {
+  const MockTable = jest.fn(() => null);
+
+  afterEach(() => {
+    MockTable.mockClear();
+  });
+
+  test("passes the correct columns to the Table component", () => {
+    act(() => create(<CarsTable Table={MockTable} />));
+    expect(MockTable.mock.calls.pop()[0].columns).toEqual([
+      "make",
+      "model",
+      "registration"
+    ]);
+  });
+});
+```
+I'm using [Jest](https://jestjs.io/) as the test runner and [React's Test Renderer](https://reactjs.org/docs/test-renderer.html) for rendering the components. Normally I would use [React Testing Library](https://testing-library.com/docs/react-testing-library/intro) instead of Test Renderer if I was writing a full suite of tests but we're only going to need to be able to render our components for this article so we'll keep things simple.
+
+The first thing we do in our test suite is to define a `MockTable` "component" which is just a Jest mock function. This needs to return something for the code to run, as we don't care what it returns we will use `null`. The first test just checks that the `columns` array is being passed into the `Table` component, not something I would normally test but it will get us up and running and help to check that everything is hooked up correctly.
+
+Jest has a whole load of assertions which can be made on mock functions but I prefer to look directly at the calls which have been made to it by accessing the `mock.calls` property. `calls` is an two dimensional array of calls made to the mock function (here we can think of them as each render of the `Table` component) where each element of `calls` is another array of the arguments made in that call. It looks like this:
+```js
+calls: [
+    [arg1, arg2, arg3], // call 1
+    [arg1, arg2, arg3], // call 2
+    [arg1, arg2, arg3], // call 3
+]
+```
+Because the call to the API is asynchronous we only want to assert on the component in its final state after the data has resolved. Calling `pop` on `mock.calls` will give us that final render, with the first element of that array being the props passed to it.
+
+Notice that on _line 8_ we are using the `afterEach` hook to clear our mock. This will reset `mock.calls` for each test which is important in order for tests to be able to be run independently of one another.
+
+## Injecting the data
+
+Fetching data is something which you are likely to be doing a lot of, by creating an abstraction for your data fetching you can handle this in one place and test it thoroughly which will ensure robustness and consistency across your application. I would move the data fetching into its own custom hook. I won't cover what that would look like here, maybe that could be the subject of another article; however, you may be able to work out what that may look like from how it is being used:
+
+```jsx
+-import React, { useEffect } from "react";
++import React, { useMemo } from "react";
+import DefaultTable from "./Table";
++import useDefaultFetch from './useFetch';
++import DefaultError from './Error';
+  
+-export default function CarsTable({ Table }) {
++export default function CarsTable({ Table, useFetch, Error }) {
+  
+  const columns = ["make", "model", "registration"];
+-  const [loading, setLoading] = useState(true);
++  const [status, payload] = useFetch('/cars');
+  
+-  useEffect(() => {
+-      fetch('/cars')
+-          .then(response => response.json())
+-          .then(data => (
+-               data.map(car => ({
++  const data = useMemo(() => {
++    if (status === "resolved") {
++      return payload.data.map(car => ({
+        ...car,
+        registration: (
+          car.registration.slice(0, car.registration.length - 3) +
+          " " +
+          car.registration.slice(car.registration.length - 3)
+        ).toUpperCase()
+-               }));
+-          ))
+-          .then(() => setLoading(false));
+-  }, []);
++      }));
++    }
++  }, [status, payload]);
+
++  if(status === 'rejected') return <Error error={payload} />;
+  
+-  return <Table columns={columns} data={data} loading={loading} />;
++  return (
+     <Table 
+       columns={columns} 
+       data={data} 
+       loading={status === 'pending'} 
+     />
+   );
+}
+  
+CarsTable.defaultProps = {
++  Error: DefaultError,
++  useFetch: useDefaultFetch,
+  Table: DefaultTable
+};
+```
+We've changed quite a lot here. The new hook returns a `status` and a `payload`, `status` can either be `"pending"`, `"resolved"` or `"rejected"` (you may recognise these as states returned by Promises) and `payload` will hold either data or error details. The loading state is passed to the table, there is a `useMemo` now which watches for changes in the data and performs the formatting on the it when it changes and we are now handling any errors through the use of a new `Error` component which is being injected in the same way as the `Table` component and `useFetch` hook.
+
+Let's add tests for the loading and error handling:
+
+```jsx
+import React from "react";
+import { create, act } from "react-test-renderer";
+import CarsTable from "./CarsTable";
+
+describe("CarsTable component", () => {
+  const MockTable = jest.fn(() => null);
++ const useMockFetch = jest.fn();
+
+  afterEach(() => {
+    MockTable.mockClear();
++   useMockFetch.mockClear(() => ['pending']);
+  });
+
+  test("passes the correct columns to the Table component", () => {
+    act(() => create(<CarsTable Table={MockTable} />));
+    expect(MockTable.mock.calls.pop()[0].columns).toEqual([
+      "make",
+      "model",
+      "registration"
+    ]);
+  });
+
++ test("calls useFetch with URL", () => {
++   act(() => create(<CarsTable Table={MockTable} useFetch={useMockFetch} />));
++   expect(useMockFetch).toHaveBeenCalledWith("/cars");
++ });
+
++ test("passes the loading state to the Table", () => {
++   act(() => create(<CarsTable Table={MockTable} useFetch={useMockFetch} />));
++   expect(MockTable.mock.calls[0][0].loading).toBe(true);
++ });
+
++ test("passes the errors to the Error component", () => {
++   const MockError = jest.fn(() => null);
++   const error = { error: "error" };
++   useMockFetch.mockReturnValue(["rejected", error]);
++   create(
++     <CarsTable Table={MockTable} useFetch={useMockFetch} Error={MockError} />
++   );
++   expect(MockError.mock.calls[0][0].error).toBe(error);
++ });
+});
+```
+We now also have a mock function called `useMockFetch` which we can use to control the data passed into our component. We test that the hook is called with the correct URL and then there are two new tests which test that the loading and errors are passed to the correct components, with the error handling test passing in its own mock component, `MockError` to assert on.
+
+There's only one thing left to address which is the function that formats the data.
+
+## Injecting the formatter
+
+I normally like to move functions like this just above the component in the same file but export them as a named export so that I can test them in isolation:
+
+```jsx
+import React, { useMemo } from "react";
+import DefaultTable from "./Table";
+import useDefaultFetch from './useFetch';
+import DefaultError from './Error';
+
++export function defaultFormatter(cars) {
++ return cars.map(car => ({
++   ...car,
++   registration: (
++     car.registration.slice(0, car.registration.length - 3) +
++     " " +
++     car.registration.slice(car.registration.length - 3)
++   ).toUpperCase()
++ }));
++}
+  
+-export default function CarsTable({ Table, useFetch, Error }) {
++export default function CarsTable({ Table, useFetch, Error, formatter }) {
+  
+  const columns = ["make", "model", "registration"];
+  const [status, payload] = useFetch('/cars');
+  
+  const data = useMemo(() => {
+    if (status === "resolved") {
+-     return payload.data.map(car => ({
+-               ...car,
+-               registration: (
+-                 car.registration.slice(0, car.registration.length - 3) +
+-                 " " +
+-                 car.registration.slice(car.registration.length - 3)
+-               ).toUpperCase()
+-     }));
++     return formatter(payload.data);
+    }
+- }, [status, payload]);
++ }, [status, payload, formatter]);
+
+  if(status === 'rejected') return <Error error={payload} />;
+  
+  return (
+     <Table 
+       columns={columns} 
+       data={data} 
+       loading={status === 'pending'} 
+     />
+   );
+}
+  
+CarsTable.defaultProps = {
++ formatter: defaultFormatter,
+  Error: DefaultError,
+  useFetch: useDefaultFetch,
+  Table: DefaultTable
+};
+```
+Now we have separated the formatter from the component, we can pass an "empty" function in from our test just to assert that data is being passed to the `Table` correctly:
+
+```jsx
+describe("CarsTable component", () => {
+  const MockTable = jest.fn(() => null);
+ const useMockFetch = jest.fn();
+
+  afterEach(() => {
+    MockTable.mockClear();
+   useMockFetch.mockClear(() => ['pending']);
+  });
+
+  test("passes the correct columns to the Table component", () => {
+    act(() => create(<CarsTable Table={MockTable} />));
+    expect(MockTable.mock.calls.pop()[0].columns).toEqual([
+      "make",
+      "model",
+      "registration"
+    ]);
+  });
+
+ test("calls useFetch with URL", () => {
+   act(() => create(<CarsTable Table={MockTable} useFetch={useMockFetch} />));
+   expect(useMockFetch).toHaveBeenCalledWith("/cars");
+ });
+
+ test("passes the loading state to the Table", () => {
+   act(() => create(<CarsTable Table={MockTable} useFetch={useMockFetch} />));
+   expect(MockTable.mock.calls[0][0].loading).toBe(true);
+ });
+
+ test("passes the errors to the Error component", () => {
+   const MockError = jest.fn(() => null);
+   const error = { error: "error" };
+   useMockFetch.mockReturnValue(["rejected", error]);
+   create(
+     <CarsTable Table={MockTable} useFetch={useMockFetch} Error={MockError} />
+   );
+   expect(MockError.mock.calls[0][0].error).toBe(error);
+ });
+
++  test("passes data to the Table", () => {
++    const data = { data: "data" };
++    useMockFetch.mockReturnValue(["resolved", data]);
++    create(<CarsTable Table={MockTable} useFetch={useMockFetch} formatter={() => {}} />);
++  });
+});
+
+
+```
+I would then write a separate test suite to test that the formatter function is doing what it should do.
+
+
+Hopefully you can see that this component is very flexible now. We can easily swap out bits of logic as required should requirements change in the future. This is much better than adding extra boolean flags and new logic to account for changes; adding extra code to components normally results in increased complexity and as the functionality changes, tests get amended and no longer function as they should or, worse, the impact of the additional functionality is left completely uncovered by tests. By writing your components in this way, functionality can be changed without affecting the original code or tests. New functions can be written with their own tests and can be "plugged in" to the original component which keeps everything nice and compartmentalised.
+
+---
+
+I hope this has been useful, if you have any comments, questions or suggestions for future articles then drop me a line on [Twitter](https://twitter.com/mattthorning).

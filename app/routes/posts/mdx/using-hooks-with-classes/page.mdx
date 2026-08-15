@@ -1,0 +1,269 @@
+---
+date: '2019-11-05T23:00:00'
+title: 'Using React Hooks with Class Components'
+tags: ['javascript', 'react', 'frontend']
+published: true
+---
+
+Writing custom hooks is fun and they're a great way of creating reusable chunks of logic which can be easily used across multiple components. The only downside to them is that they only work with functional components. If you have a codebase which was written before hooks then either you opt to rewrite all of your components as functions (this might not make you very popular!) or you need to be able to make any hooks you write work with _all_ of your components.
+
+In this post I would like to share a couple of techniques which can be used to inject the data and methods from a hook into a class, they are known as "render props" and "higher order components".
+
+## Render Props
+"Render props" is the name given to a technique where a function is passed as a prop to a component (typically called 'render', hence the name) which is called with some state that is then accessible to the components returned by the function. Here's a quick example to make things clearer than whatever that sentence meant:
+
+```jsx
+function SayHello(props) {
+  const helloTo = 'Code';
+  return props.render(helloTo);
+}
+
+function Greet() {
+  return (
+    <SayHello render={helloTo => (
+      <p>Hello {helloTo}</p>
+    )} />
+  );
+}
+```
+The `SayHello` component has a function passed to it which returns a `<p>` tag with the innerHTML set to `"Hello Code"`. Using the technique this way has always felt a bit strange to me though, and since you can use any prop you like (it doesn't have to be `render`), I usually opt to use the `children` prop which allows us to rewrite the above like this:
+
+```jsx
+function Greet() {
+  return (
+    <SayHello> 
+      {helloTo => (
+        <p>Hello {helloTo}</p>
+      )} 
+    <SayHello />
+  );
+}
+```
+Now the `SayHello` component opens and closes around the other markup and I feel a little bit happier! It's entirely a matter of preference which method you choose though, no way is more right than the other.
+
+Let's now make use of this technique to use the state from a hook in a class component. First I'll write the component as I would like to have used it; **this won't work!**
+```jsx
+class ShowApiData extends React.Component {
+  render() {
+    // This doesn't work:
+    const [data, error, loading] = useApiData('/api/results');
+    
+    if(loading) {
+      return <Spinner />;
+    }
+
+    if(error) {
+      return <ErrorPage error={error} />
+    }
+
+    return <Table data={data} />;
+  }
+}
+```
+
+Instead we need to create a new component which _can_ use our hook and then use that in the `ShowApiData` component:
+
+```jsx
+function ProvideApiData({ children }) {
+    const [data, error, loading] = useApiData('/api/results');
+    return children({ data, error, loading });
+}
+
+class ShowApiData extends React.Component {
+  render() {
+    return (
+      <ProvideApiData>
+        {({ data, error, loading }) => {
+          if(loading) {
+            return <Spinner />;
+          }
+       
+          if(error) {
+            return <ErrorPage error={error} />
+          }
+       
+          return <Table data={data} />;
+        }}
+      </ProvideApiData>
+    ); 
+  }
+}
+```
+This works in the same as way as our examples above. By including the new `ProvideApiData` component and passing a function which returns the logic we were first attempting to return from `render`, we can now provide the state that we want from the `useApiData` hook. 
+
+I like to leave the new component in situ above the original component for readability but if you need to use it in a lot of places then it probably makes more sense to keep it with the hook itself as a named export.
+
+## Higher Order Components
+The main problem with the render props method is that everything needs to happen in the render method of your class. This can be a bit limiting if, say, you want something to happen when a button is pressed or in one of the lifecycle hooks. Higher Order Components are more flexible than render props, they are described as an advanced React technique but I think this makes them sound more confusing than they actually are. 
+
+A Higher Order Component (HOC for short) is a just a function which you call with a component as an argument. This function returns a new component which wraps the component you passed in; your original component is now the child of the new component. The new component can perform some functionality, hold some state or own some methods which can all be passed to the original component as props. Let's start with a simple one again before using it with a hook:
+
+```jsx
+function withHello(Component) {
+  return function() {
+    const helloTo = 'Code';
+    return <Component helloTo={helloTo} />;
+  }
+}
+
+function Greet({ helloTo }) {
+  return (
+      <p>Hello {helloTo}</p>
+  );
+}
+
+export default withHello(Greet);
+```
+This time I have included the `export` in the example because this is normally where I would wrap the component. The `Greet` component is passed to `withHello` which returns a new component with `Greet` as it's child and the `helloTo` variable passed down to it as a prop.
+
+Let's use this with a hook. First we'll set up a component as a class so that it's clear what we're aiming for. 
+
+This is just a simple counter component. It displays a value and two buttons; one button increments the value and the other resets it. The `Counter` component has an `initialCount` prop so that it can be set to start at any number, when the reset button is pressed it should reset the value back to this number. If the `initialCount` prop is not set then it will default to zero.
+
+```jsx
+class Counter extends React.Component {
+  constructor(props) {
+    super(props);
+    this.initialCount = props.initialCount || 0;
+    this.state = {
+      count: this.initialCount
+    }
+  }
+  
+  increment() {
+    this.setState({ count: this.state.count + 1 })
+  }
+
+  reset() {
+    this.setState({ count: this.initialCount})
+  }
+
+  render() {
+    const { count } = this.state;
+    return (
+      <>
+        <button onClick={this.increment.bind(this)}>+1</button>
+        <button onClick={this.reset.bind(this)}>Reset</button>
+        <p>Count: {count}</p>
+      </>
+    );
+  }
+}
+
+function App() {
+  return (
+    <Counter initialCount={3}/>
+  );
+}
+```
+It's worth noting how many lines of code we need to get this functionality working. There's the `render` method, we need to add a `constructor` because we want to set the initial state to a prop and then there are two other methods which are called on the click of the buttons which need to be bound to the context of the component.
+
+Now we'll create a custom hook which can instead handle the logic for the component's state: 
+
+```jsx
+function useCount(initialCount = 0) {
+  const [count, setCount] = React.useState(initialCount);
+  const increment = () => setCount(count + 1);
+  const reset = () => setCount(initialCount);
+  return [count, increment, reset];
+}
+```
+We've managed to condense the logic from the component into just four lines, this is what I really like about hooks, everything you need to know about the state logic for our component is in one place and it's completely reusable. 
+
+Just for the sake of completeness, this is how we could use the hook in a functional component:
+```jsx
+function Counter({ initialCount }) {
+  const [count, increment, reset] = useCount(initialCount);
+  return (
+      <>
+        <button onClick={increment}>+1</button>
+        <button onClick={reset}>Reset</button>
+        <p>Count: {count}</p>
+      </>
+    );
+  }
+
+function App() {
+  return (
+    <Counter initialCount={3}/>
+  );
+}
+```
+Again, this is very concise and clean. Now the important bit. Let's use a HOC to allow us to use the `useCount` hook with our class. First we'll refactor the class so that it uses the hook's state instead of its own:
+
+```jsx
+class Counter extends React.Component {
+  render() {
+    const { count, increment, reset } = this.props;
+    return (
+      <>
+        <button onClick={increment}>+1</button>
+        <button onClick={reset}>Reset</button>
+        <p>Count: {count}</p>
+      </>
+    );
+  }
+}
+```
+This vastly simplifies the class, we no longer need to include the `constructor` method or worry about binding `this` to anything. The HOC itself only requires a few lines of code:
+```jsx
+function withUseCount(Component) {
+  return function({ initialCount }) {
+    const [count, increment, reset] = useCount(initialCount);
+    return <Component {...{ count, increment, reset }} />;
+  };
+}
+```
+This function is called with a `Component` (this will be the `Counter` component) and returns a new component that uses the hook. The new component takes the `initialCount` prop and calls the hook with it. The state from hook is then passed into the `Counter` component. 
+
+Lastly, all we need to do is to replace `Counter` with `CounterWithHook` and use it in exactly the same way as we did before:
+
+```jsx
+const CounterWithHook = withUseCount(Counter);
+
+function App() {
+  return <CounterWithHook initialCount={3} />;
+}
+```
+That's it, we are now able to use our custom hook with both functional and class components. Here's the code in one piece so that you can see how it fits together or copy it into an editor to try it out for yourself:
+```jsx
+function useCount(initialCount = 0) {
+  const [count, setCount] = React.useState(initialCount);
+  const increment = () => setCount(count + 1);
+  const reset = () => setCount(initialCount);
+  return [count, increment, reset];
+}
+
+class Counter extends React.Component {
+  render() {
+    const { count, increment, reset } = this.props;
+    return (
+      <>
+        <button onClick={increment}>+1</button>
+        <button onClick={reset}>Reset</button>
+        <p>Count: {count}</p>
+      </>
+    );
+  }
+}
+
+function withUseCount(Component) {
+  return function({ initialCount }) {
+    const [count, increment, reset] = useCount(initialCount);
+    return <Component {...{ count, increment, reset }} />;
+  };
+}
+
+const CounterWithHook = withUseCount(Counter);
+
+function App() {
+  return <CounterWithHook initialCount={3} />;
+}
+
+ReactDOM.render(<App />, document.getElementById("root"));
+```
+
+---
+
+I hope you've found this post helpful, thanks for reading.
+

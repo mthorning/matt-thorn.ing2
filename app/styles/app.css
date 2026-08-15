@@ -1,7 +1,17 @@
+@import "./shiki.css";
+
+@font-face {
+  font-family: 'Quicksand';
+  src: url('./fonts/Quicksand.ttf') format('ttf');
+  font-weight: 100 900;
+}
+
 :root {
-  --dark-base-100: '#1d232a', --light-base-100: '#faf7f5',
-    --background: light-dark(var(--light-base-100), var(--dark-base-100));
+  --dark-base-100: '#1d232a';
+  --light-base-100: '#faf7f5';
+  --background: light-dark(var(--light-base-100), var(--dark-base-100));
   --color: light-dark(var(--light-neutral), var(--dark-neutral));
+  --accent: light-dark(var(--light-accent), var(--dark-accent));
 
   color-scheme: light dark;
 }
@@ -23,6 +33,7 @@ body {
   line-height: 1.5;
   /* 4. Improve text rendering */
   -webkit-font-smoothing: antialiased;
+  font-size: 16px;
 
   color: var(--color);
   background: var(--background);
@@ -56,6 +67,7 @@ select {
 
 /* 7. Avoid text overflows */
 p,
+a,
 h1,
 h2,
 h3,
@@ -63,7 +75,7 @@ h4,
 h5,
 h6 {
   overflow-wrap: break-word;
-  font-family: var(--font-quicksand);
+  font-family: 'Quicksand', system-ui, sans-serif;
 }
 
 a {

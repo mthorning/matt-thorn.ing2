@@ -1,0 +1,206 @@
+---
+date: '2020-02-09T14:00:00'
+title: 'Getting to grips with Reason'
+tags: ['reason', 'frontend', 'react']
+published: true
+---
+
+import CliOutput from '/app/routes/posts/mdx-components/cli-output'
+
+After spending some time writing Rust I have found myself yearning for a good type system whilst writing front-end code. After a brief spell messing around with TypeScript, I stumbled across Reason or ReasonML (not really sure which one is right!).
+
+Reason is a new syntax based on OCaml which has a very good type system. For me, the syntax sits nicely between JavaScript and Rust and the project was started by Jordan Walke which means the language also has first-class support for React! On top of this, the compiler is crazy fast and starting a new project takes mere seconds.
+
+I have been meaning to make myself a simple profile site for a while and I thought it would be the perfect excuse to give Reason and ReasonReact a try. I've spent the last week making the site, during which I have run into a couple of issues which I found difficult to resolve; the language is quite new so finding the information you need can be a little tricky at times, therefore I thought it would be a good idea to make a note of them (and my solutions to them) here.
+
+## Pipes
+
+Pipes work by taking the output of a function and piping it into the input of another function. They are quite a nice piece of syntax which can change some code which looks like this:
+
+```js
+// JavaScript:
+lastDoThis(thenDoThis(firstDoThis(value)))
+```
+
+Into this:
+
+```reason
+value |> firstDoThis |> thenDoThis |> lastDoThis;
+```
+
+If you spend some time looking at examples of code written in Reason you are likely to see three different pipe operators and at first I wasn't sure why:
+
+1. <code>|.</code>
+1. <code>-></code> ( -> )
+1. <code>|></code> ( |> )
+
+First we have Reason's old syntax for its Pipe First operator `|.`, this was replaced by the thin arrow symbol at number 2 `->` but you may still come across it when looking for tutorials online. Number 3 `|>` is OCaml's own Pipe operator, this is also valid in Reason and you will likely see it being used in places because the Pipe `|>` and Pipe First `->` have different behaviours.
+
+If you compare a standard library function like `List.map` with a function from Bucklescript such as `Belt.List.map`, you will see that `List.map` takes the list as its second argument whereas `Belt.List.map` takes the list as its first. The former order is the order in which Ocaml functions expect arguments, therefore OCaml's Pipe operator adds the value being piped as the righter-most argument. Pipe First (as its name suggests) puts it in as the first argument; I'm guessing that when Bucklescript was being created, they decided to go with the latter order because that is what would feel most familiar to developers coming from JavaScript.
+
+```reason
+let items = [1, 2, 3];
+let double = number => number * 2;
+
+let doubled = List.map(double, items);
+/* or */
+let doubled = items |> List.map(double);
+
+let doubled = Belt.List.map(items, double);
+/* or */
+let doubled = items->Belt.List.map(double);
+```
+
+You can use either operator if the function you are piping to only takes a single argument.
+
+## Creating HTML lists
+
+Writing lists (`<ul>` and `<ol>`) is a pretty common occurrence when you are creating a user interface, I suspect that if you are using React regularly that you would be able to write the following with your eyes closed:
+
+```js
+// JavaScript:
+function UnorderedList({ items }) {
+  return (
+    <ul>
+      {items.map(item => (
+        <li key={item}>{item}</li>
+      ))}
+    </ul>
+  )
+}
+```
+
+It might then, come as something of a surprise to struggle to get this to work in Reason:
+
+```reason
+module UnorderedList = {
+  [@react.component]
+  let make = (~items) => {
+    <ul>
+      {items->Belt.List.map(item => {
+        <li key=item>{item->React.str}</li>
+      })}
+    </ul>;
+  }
+}
+```
+
+<CliOutput
+  error
+  output={`This has type:
+('a => 'b) => Belt.List.t('b)
+But somewhere wanted:
+ReasonReact.reactElement (defined as React.element)
+`}
+/>
+
+This is because `List.map` returns a list and not a React element which is what the compiler is expecting to be returned from the `make` function. In order to get this to work we need to jump through some hoops, first we need to map through our list, then we need to convert our list to an array and finally we can convert that array to a React element or group of.
+
+This is something which you may find yourself doing several times whilst developing an application, for that reason I found it best to create a function which could be reused any time I needed to convert a list of data into some elements:
+
+```reason
+let mapElements = (list, callback): React.element =>
+list->Belt.List.map(callback)->Array.of_list->React.array;
+`
+
+found that it was best to put this function and some other common patterns in a file called Utils.re. That way I could just write
+pen Utils` at the top of any file to get access to all of my helpful utilities:
+
+`reason
+en Utils;
+
+dule UnorderedList = {
+[@react.component]
+  let make = (~items) => {
+    <ul>
+      {items->mapElements(item => {
+        <li key=item>{item->React.str}</li>
+      })}
+    </ul>;
+  }
+}
+```
+
+## Getting an input value
+
+If you want to get the value from an input (or any property from the target of an event) then you can't just do this as you would normally do:
+
+```js
+// JavaScript:
+function Input() {
+  const onChange = event => console.log(event.target.value)
+  return <input onChange={onChange} />
+}
+```
+
+Instead you need to pass the synthetic `event` to a function which will return an object of type Js.t, this is a type provided by Bucklescript which wraps a Reason object (different to a record) and is accessed in a slightly strange way:
+
+```reason
+let make = _ => {
+  let onChange = event => Js.log(React.Form.target(event)##value);
+  <input onChange />;
+}
+```
+
+`React.Form.target` is the function which takes the event and returns the Js.t object. The double hash (`##`) is the accessor which can be used to get any property which you would normally get from `event.target` when using JavaScript. Normally, properties on objects in Reason are accessed using a single hash, I guess the double hash is needed because first you need to access the object within the Js.t and then you access the property you want on the Reason object. It looks a bit strange at first but I soon got used to it and find I don't have to think about what I need to type any more!
+
+Here's some further reading which might help:
+
+- [Reason Objects](https://reasonml.github.io/docs/en/object)
+- [Bucklescript Js.t](https://bucklescript.github.io/docs/en/object-2)
+
+## Clashing with keywords
+
+Sticking with inputs, if you try to set the type of a HTML input like so:
+
+```reason
+<input type="number" />
+```
+
+Then you will get an error message telling you that `type` is a reserved word. You can get around this problem easily by just adding an underscore to the end of the word:
+
+```reason
+<input type_="number" />
+```
+
+## Bundling for production
+
+One of the things I enjoy about Reason is that the compiler is really fast, no more waiting for a bundler when developing! I did want to bundle my files for deployment though so I created a webpack config and set the entry to the Index.bs.js file. Because modules are commonJs by default, the size of my bundle was really large, so I changed the bsconfig.json to use es6 modules instead:
+
+```json
+{
+  "package-specs": [
+    {
+      "module": "es6",
+      "in-source": false
+    }
+  ]
+}
+```
+
+Unfortunately this meant that my app would no longer work in development mode without also using a bundler, which I really didn't want to do. I wasn't able to find any documentation on this (it probably exists somewhere, I'm just not very good at finding stuff!) but I figured I would see what would happen if I added both module types to the array:
+
+```json
+{
+  "package-specs": [
+    {
+      "module": "commonJs",
+      "in-source": false
+    }
+    {
+      "module": "es6",
+      "in-source": false
+    }
+  ]
+}
+```
+
+Because I have `"in-source"` set to `false`, the generated JavaScript files are put in the lib folder instead of alongside the Reason files. I prefer it this way if the app is entirely written in Reason, I can see why it would be better to keep the JS and Re files together if you're converting a codebase though.
+
+With both module types in the array, the lib folder get a js directory **and** an es6 directory. This means that the index.html file used for development can use the commonJs files from the js directory and the Webpack config for production can use the es6 files.
+
+I also wanted to bundle the CSS files, I found the easiest way to do this was to just add an an extra index.js file to the Webpack entry array and in this array import the CSS files that I need.
+
+---
+
+Hopefully this has been helpful, I've really enjoyed my first foray into Reason and I look forward to making more with it in future. Watch this space for more on the subject. Bye!

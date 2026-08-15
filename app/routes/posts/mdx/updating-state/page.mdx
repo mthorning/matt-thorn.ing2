@@ -1,0 +1,176 @@
+---
+date: '2019-05-12T10:00:00'
+title: 'Updating state in React with hooks'
+tags: ['javascript', 'react', 'frontend']
+published: true
+---
+
+Very often when writing an application in React you will need to update some state from a child component. With components written as ES6 classes, the usual method was to pass a function down to the children as a prop bound to the context of the parent. React's new useState hook has made things simpler; in fact, I haven't written a class since hooks were released so I no longer need to bind functions to the context of the parent component which holds the state. Passing the setState function returned by the useState hook down to the children is still error-prone though, there is a another way which I would like to show you now.
+
+## Prop drilling
+
+Passing props down through several levels of components to where they are needed is known as prop drilling. Here's an example:
+
+```javascript
+import React, { useState } from 'react'
+import ReactDOM from 'react-dom'
+import InputComponent from './InputComponent'
+
+function App() {
+  const [items, setItems] = useState([])
+
+  return (
+    <>
+      <InputComponent title="Add an Item:" items={items} setItems={setItems} />
+      <ul>
+        {items.map(item => (
+          <li>{item}</li>
+        ))}
+      </ul>
+    </>
+  )
+}
+
+const rootElement = document.getElementById('root')
+ReactDOM.render(<App />, rootElement)
+```
+
+This is our top-level component. It renders an `InputComponent` and an unordered list of `items`. Before returning the elements to render, the `useState` function is called, this sets up an array of `items` (which are rendered in the `ul` element) and you can see that we're passing both `items` and `setItems` to the `InputComponent` along with another prop called `title`.
+
+It should be pretty clear what this code is going to do even without looking at the `InputComponent`. The user is going to be able to input the name of an item and that item will be added to the list. Still, let's take a look at the `InputComponent` anyway!
+
+```javascript
+import React from 'react'
+import InputControls from './InputControls'
+
+export default function InputComponent({ title, items, setItems }) {
+  return (
+    <>
+      <h3>{title}</h3>
+      <InputControls items={items} setItems={setItems} />
+    </>
+  )
+}
+```
+
+This is a stupidly simple component, it just displays the `title` prop and then renders another component called `InputControls`. I wouldn't recommend writing components like this in reality, I just need several layers to illustrate my point! Here's the `InputControls` component:
+
+```javascript
+import React, { useState } from 'react'
+
+export default function InputControls({ items, setItems }) {
+  const [userInput, setUserInput] = useState('')
+
+  function onInputChange(e) {
+    setUserInput(e.target.value)
+  }
+
+  function onButtonClick() {
+    setItems([...items, userInput])
+    setUserInput('')
+  }
+
+  return (
+    <>
+      <input value={userInput} onChange={onInputChange} />
+      <button onClick={onButtonClick}>Add</button>
+    </>
+  )
+}
+```
+
+So this is where the user input is accepted. There's an input box which updates the local state with whatever the user types. There is also a button which, when pressed, calls the `setItems` function which has been passed down from the top-level component. Because we want to add the new item to the array of `items`(instead of just replacing what was already stored there), and state is immutable, we also need to pass that down through the layers of components to be used in the new array.
+
+This works so what's the problem? Well, if we refactor some of our components near the top of the tree and forget to pass props down we can inadvertently break other components further down without realising. There are obviously steps you can take to prevent this from happening or to alert you if it does (think regression tests or [PropTypes](https://reactjs.org/docs/typechecking-with-proptypes.html)) but it's better to remove the possibility of it happening altogether.
+
+## Passing props through
+
+There are a couple of tricks I want to talk about in this post. The first is one that I use quite often where I have a component that wraps another and want it to use some of its props for itself and then pass the remainder to its child component.
+
+```javascript
+export default function InputComponent(props) {
+  const { title, ...rest } = props
+  return (
+    <>
+      <h3>{title}</h3>
+      <InputControls {...rest} />
+    </>
+  )
+}
+```
+
+By using [ES6 rest parameters](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/rest_parameters) we can take any props which we don't need and assign them to a single variable which can then be passed to the child component as props by using [destructuring](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Destructuring_assignment). Now our `InputComponent` doesn't need to know about all of the props, it just takes what it needs and passes everything else through. If we refactor `InputControls` so that it requires more props, we do not need to change anything in `InputComponent` to make it work, we can just add them in `App`.
+
+This is an improvement but we still need to pass the `items` and `setItems` down to `InputControls` as props. We can, instead, use React's context API along with the useContext hook to give us access to our state from any point in the component tree.
+
+## Context and useContext
+
+First we'll change the top-level component to look like this:
+
+```javascript
+import React, { useState } from 'react'
+import ReactDOM from 'react-dom'
+import InputComponent from './InputComponent'
+
+export const ItemsContext = React.createContext()
+
+function App() {
+  const [items, setItems] = useState([])
+
+  return (
+    <div>
+      <ItemsContext.Provider value={[items, setItems]}>
+        <InputComponent title="Add an Item:" />
+      </ItemsContext.Provider>
+      <ul>
+        {items.map(item => (
+          <li>{item}</li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+const rootElement = document.getElementById('root')
+ReactDOM.render(<App />, rootElement)
+```
+
+At _line 5_ we have added a call to `React.createContext`. This returns an object which contains two components, one is a Provider and the other is a Consumer. I'm exporting the variable, `ItemsContext` which contains both Provider and Consumer so that I can import it into any modules that need to access it, you may want to keep this in a separate file so that it's easier to find; I'm leaving it here for simplicity.
+
+The Provider is used at _line 12_ (`ItemsContext.Provider`) and wraps the `InputComponent`. The provider can wrap as many components as you want it to and all components nested within will have access to the contents of the Provider's `value` prop.
+
+You may also notice that we are now only passing the `title` prop to the `InputComponent`. Because of our change where we used `rest` earlier, there are no further changes required to the `InputComponent`, we can leave it as is and if we need to get any new props to the `InputControls` component at a later date, we can just pass them to `InputComponent` and they will fall through.
+
+Let's go to the `InputControls` component to see how we can get our `items` and `setItems` out of the context provider:
+
+```javascript
+import React, { useState, useContext } from 'react'
+import ItemsContext from './App'
+
+function InputControls() {
+  const [items, setItems] = useContext(ItemsContext)
+  const [userInput, setUserInput] = useState('')
+
+  function onInputChange(e) {
+    setUserInput(e.target.value)
+  }
+
+  function onButtonClick() {
+    setItems([...items, userInput])
+    setUserInput('')
+  }
+
+  return (
+    <>
+      <input value={userInput} onChange={onInputChange} />
+      <button onClick={onButtonClick}>Add</button>
+    </>
+  )
+}
+```
+
+At the top of the file we need to import both the `useContext` hook and our `ItemsContext` from `App`. On _line 5_ we call `useContext` and pass in the `ItemsContext`, note that we pass the whole object in, not just the Consumer. This returns our `items` and `setItems` function which we can use exactly as we did before. Notice also that this component no longer requires any props to function, we can move it to wherever we want in the application, and as long as the Provider component is above it in the component tree, it will continue to work.
+
+---
+
+Using these techniques can make your application more robust and less likely to break when you add, remove or move components around. It's not something which is ideal for every situation but they're certainly useful methods to have at your disposal. Thanks for reading, I hope it's been helpful.

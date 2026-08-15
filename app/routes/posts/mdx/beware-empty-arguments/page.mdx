@@ -1,0 +1,58 @@
+---
+date: "2021-02-17T12:00:00"
+title: "Beware of Empty Arguments"
+tags: ["javascript", "frontend"]
+published: false
+---
+
+When you want to return more than one thing from a function in JavaScript you have two options, you can either bundle them together in an array or bundle them together in an object. Which you choose will depend on your use but there is a way you can have your cake and eat it too. I'm going to be looking at React hooks in this post but this will apply to plain functions too.
+
+Let's use the example of a custom hook which fetches some data from a REST API:
+
+```js
+const [status, payload] = useFetchedData(url)
+```
+This hook takes a `url` and returns an array from which we destructure `status` and `payload`. The hook will call the endpoint at the URL supplied whenever it changes, `status` is the state of the promise (pending, resolved or rejected) and `payload` contains the response from the API if the promise is resolved or the error response if it is rejected. 
+
+Returning the values in a array works very well in this situation because it is very unlikely that we would require one value without the other, plus it also means we can easily rename the variables if we need to call the hook multiple times in the same scope:
+
+```js
+const [userStatus, userPayload] = useFetchedData(userUrl)
+const [historyStatus, historyPayload] = useFetchedData(historyUrl)
+```
+
+We have a hook very much like this in the codebase where I work. We found that there were times where we needed to trigger a refetch to get fresh data so we added an additional `refetch` function. This function could then be called after some update (such as when something is deleted) so that the data on the page could be refreshed. There were times where the call to change something returned the data we needed though, so instead of fetching the data again unecessarily we set the `refetch` function to only call the API if no arguments were supplied, if there is an argument then it just updates the state with that value instead of making the call:
+
+```js
+const [status, payload, refetch] = useFetchedData(url)
+
+function addItem(item) {
+  axios.post(url, item)
+    .then(response => refetch(response))
+}
+
+function deleteItem(id) {
+  axios.delete(`${url}/${id}`)
+    .then(() => refetch())
+}
+
+```
+
+There is a problem with this function though - it is very easy to use incorrectly. Instead of writing `.then(() => refetch())` it can be tempted to write `.then(refetch)` because that's the same thing, right? Well, no. Just because we're not declaring any arguments it doesn't mean there aren't any there. In the second example we are passing any arguments to the callback in `then` to the `refetch` function which will replace the state for our page with whatever happens to be there!
+
+> "So much complexity in software comes from trying to make one thing do two things." – Ryan Singer
+
+So it's much safer to split the update and refetch functionality into two separate functions:
+
+```js
+const [status, payload, refetch, updateState] = useFetchedData(url)
+```
+
+Now we have four items in our returned array and it's quite likely that we won't need all of them all of the time. So now it would make sense to return an object instead of an array.
+
+
+
+
+
+
+

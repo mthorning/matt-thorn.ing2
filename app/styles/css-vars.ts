@@ -54,5 +54,5 @@ export function CssSetup() {
     addVars(constants, '--const');
   }, []);
 
-  return null;
+  return null
 }

@@ -1,0 +1,122 @@
+---
+date: "2019-03-13T08:00:00"
+title: "Bash tips"
+tags: ["linux"]
+published: true
+---
+
+This post is as much for myself as it is for anyone else and I will update it whenever I come across anything that I find that is worth including. The below are all of the cool little bash commands for linux/unix that I have stumbled across.
+
+Command | Description
+------- | :-----------|
+`man`   | Follow this with any command for full instructions on how to use. Most commands can be followed with `--help` or `-h` as well for a reminder of the basics.
+`set -e` | Sets option to exit a script if a command returns a non-zero exit code.
+`set -x` | Outputs the commands that get run as they run.
+`grep` | Searches an input and prints out lines that match a pattern.
+`<()` | Treats output as a file such as `diff <(grep something) <(grep nothing)`.
+`!!` | Repeats the last command.
+`!$` | Repeats the last argument of the last command.
+`pushd` | Changes directory like `cd` but adds to stack so you can then go back with `popd`.
+`cd ~` | Change to home directory, `cd` on its own will also do this.
+`cd -` | Go back to previous directory.
+`!:1-$` | Takes all the arguments to the previous command and drops them in. `!`(last command) `:1`(first word) `-$`(to last word).
+`:h` | Put it after a filename, and it will change that filename to remove everything up to the folder.
+`exit 0` | Exit script with exit code zero.
+`head` | Print first 5 lines of file.txt.
+`tail`  | Print last 5 lines of file.txt.
+`lsof` | Lists open files. Use with `-i :80` to find process listening on a port (port 80 here).
+`netstat` | Lists network processes. If used with `-plt` switch it shows port numbers with programme name and PID. Useful if there is a process already listening on a port which you want to use.
+`ctrl-r` | Reverse history search. `Ctrl-r` next item, `ctrl-j` to copy or `enter` to run.
+`top` | Live feed of processes using memory and how much memory they are using.
+`htop` | Like top but with a graphical interface.
+`tee` | Splits the output of a program so that it can be both displayed on screen and saved in a file.
+
+## Variables
+```
+$ variable=$(git describe --tags)
+$ echo "version is $variable"
+version is 0.15.0
+```
+<br />
+
+## Here Docs
+Input stream which sends the text in each line to a process until a line is reached which contains only the delimiter (`ENDOFSTRING` in the example below).
+```
+$ cat << ENDOFSTRING
+  This is a here doc
+  It will write every line to the file
+  until a line with only ENDOFSTRING
+  ENDOFSTRING
+
+This is a here doc
+It will write every line to the file
+until a line with on ENDOFSTRING
+```
+<br />
+
+## Translate
+Transforms or deletes characters in a string.
+```
+$ echo "hello there" | tr a-z A-Z
+HELLO THERE
+
+$ echo "edward woodward" | tr -d "d"
+ewar woowar
+```
+
+As mentioned above, I will keep updating this one. I expect I'll update the date each time to keep bumping it up the list. I'm also planning on starting a similar reference list of Vim commands :)
+<br />
+
+## Cat
+Concatenates files. In addition to writing a file to stdout, `cat` can also write to a file. Use cat with redirect ( `>` ) to the file you want to write to, write your message then `ctrl-d` to exit:
+```
+$cat > file1.txt
+Hello from file 2
+
+$cat > file2.txt
+Hello from file 2
+
+cat file1.txt file2.txt > file3.txt
+cat file3.txt
+Hello from file 2
+Hello from file 2
+```
+<br />
+
+## Links
+Creates a hard link to a file in another location. Use the `-s` switch to make it a soft link (also called a symbolic link or symlink for short) to a file in another location:
+```
+ln -s target_path link_path
+```
+The files that you see on your filesystem are just pointers to something called an _inode_ which is where the data is actually stored internally. A hard link is another pointer which points to the same inode. A soft link creates a new inode which references the original inode. This is an important distinction to make because deleting a hard link will delete the actual inode whereas deleting a soft link (symlink) does not affect the original file.
+
+## Tar
+Compresses a directory or files(s).
+```
+tar -czvf name-of-archive.tar.gz /path/to/directory-or-file
+```
+The `c` switch signifies we want to create an archive, `z` says we want to use gzip to compress the file(s), `v` is verbose and `f` indicates that the following text will be the name of the filename we want to create. To unzip a tarball it is the same syntax as above except the `c` (create) switch is replaced with `x` for _extract_:
+```
+tar -xzvf archive.tar.gz
+```
+<br />
+
+## SSH
+Securely connect to a remote host.
+```
+ssh your_username@remote_host_domain_or_ip_address
+```
+<br />
+
+## SCP
+Secure copy files from remote host to local host or vice-versa. It uses [SSH](/posts/bash-tips#ssh) with the same level of security to transfer the files.
+```
+scp foobar.txt your_username@remotehost:/some/remote/directory
+```
+Reverse the order of the arguments to copy in the other direction.
+
+## Find
+Recursively searches directories to find files.
+```
+find /start/dir -name "something.*"
+```

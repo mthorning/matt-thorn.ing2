@@ -1,0 +1,120 @@
+---
+date: "2021-02-17T22:00:00"
+title: "What's the Best Hook Return Type?"
+tags: ["javascript", "react", "frontend"]
+published: true
+---
+
+When you want to return more than one thing from a function in JavaScript you have two options, you can either bundle them together in an array or bundle them together in an object. Which you choose to do will depend on your situation but there is a way you can have your cake and eat it too! I'm going to be looking at React hooks in this post but they're just functions so don't let that put you off if you're not into React.
+
+## The Problem
+Let's use the example of a custom hook which fetches some data from a REST API:
+
+```js
+const [status, payload] = useFetchedData(url)
+```
+This hook takes a `url` and returns an array from which we destructure `status` and `payload`. The hook will call the endpoint at the URL supplied whenever it changes, `status` is the state of the promise (`"pending"`, `"resolved"` or `"rejected"`) and `payload` contains the response from the API if the `status` is `"resolved"`, or the error response if it is `"rejected"`. 
+
+Returning the values in an array works well in this situation because it is very unlikely that we would require one value without the other, plus it also means we can easily rename the variables if we need to call the hook multiple times in the same scope:
+
+```js
+const [userStatus, userPayload] = useFetchedData(userUrl)
+const [historyStatus, historyPayload] = useFetchedData(historyUrl)
+```
+
+We have a hook very much like this in the codebase where I work. We found that there were times when we needed to manually fetch from the API again to get fresh data so we added an additional `refetch` function. This function could then be called after some update to the backend (such as when something is deleted) so that the data on the page could be refreshed. There were also occasions where the call to change something returned the data we needed in the response, so instead of fetching the data again unnecessarily we set the `refetch` function to only call the API if it was called without any arguments; if it was called with arguments then it would just update the state with whatever was passed to it:
+
+```js
+const [status, payload, refetch] = useFetchedData(url)
+
+function addItem(item) {
+  axios.post(url, item)
+    .then(response => refetch(response))
+}
+
+function deleteItem(id) {
+  axios.delete(`${url}/${id}`)
+    .then(() => refetch())
+}
+
+```
+
+There is a big problem with using a function in this way and I did start rambling on about it here but I'm going to try to stay on topic and cover that in a follow-up post instead! The upshot of it is that we end up with two functions instead of one, the first for refetching the data _and_ updating the state and the second for just updating the state:
+
+```js
+const [status, payload, refetch, updateState] = useFetchedData(url)
+```
+
+Now we have four items in our returned array and it's quite likely that we won't need all of them all of the time. At this point it would make sense to return an object instead of an array:
+
+```js
+const { status, payload, refetch, updateState } = useFetchedData(url)
+```
+
+Which is great because now we can destructure just one of the return values if we only need one or several at a time, in any order we see fit:
+
+```js
+const { payload } = useFetchedData(url)
+const { updateState, status, refetch = useFetchedData(url)
+// NB. the payload from the first call will not be linked to the returns 
+// from the second call unless you have set up you hook as a singleton. 
+```
+
+But things get pretty cumbersome if you need to make multiple calls because each value needs to be destructured using the property name and then renamed to a unique variable name so that it doesn't clash with the other variables in scope:
+
+```js
+const { 
+  status: userStatus, 
+  payload: userPayload 
+} = useFetchedData(userUrl)
+
+const { 
+  status: historyStatus, 
+  payload: historyPayload 
+} = useFetchedData(historyUrl)
+```
+
+I also think it's generally good practice to choose a more descriptive name for your variables too so you may end up doing this anyway, even if you are only calling the hook once.
+
+Fortunately there is a solution to this problem, it's probably not something you will want to do with every hook you write but it's certainly useful for ones which will be used in many places and in different ways.
+
+But first...
+
+## A Bit About Arrays
+
+Arrays in JavaScript ["are list-like objects whose prototype has methods to perform traversal and mutation operations"](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array). This means that it is possible to assign properties to them in the same way that you can with objects:
+
+```js
+const array = [1, 2, 3]
+array.four = 4
+console.log(array) // (3) [1, 2, 3, four: 4]
+```
+
+As you can see, the additional property has not affected the `length` of the array. In fact, any properties assigned to an array are kept separate from the elements within the array which means that the extra properties will not interfere with the normal array operations you may want to perform:
+
+```js
+console.log(array.map(x => x)) // (3) [1, 2, 3]
+
+const [one, two, three, four] = array
+console.log(one, two, three, four) // 1 2 3 undefined
+```
+
+## The Solution
+
+With this in mind we can implement the solution to our problem. We just need to change the return from our hook like this:
+
+```js
+- return [status, payload, refetch, updateState]
++ const returnValues = [status, payload, refetch, updateState]
++ returnValues.status = returnValues[0]
++ returnValues.payload = returnValues[1]
++ returnValues.refetch = returnValues[2]
++ returnValues.updateState = returnValues[3]
++ return returnValues
+```
+
+---
+
+I hope this post has been helpful, see you next time. 
+
+

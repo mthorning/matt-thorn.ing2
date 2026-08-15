@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, type MutableRefObject } from "react";
-import { colours } from "~/css-vars";
+import { colours } from "~/styles/css-vars";
 import { useColourScheme } from "~/hooks";
 
 export default function RainAnimation({

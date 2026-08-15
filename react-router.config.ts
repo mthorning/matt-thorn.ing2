@@ -1,10 +1,14 @@
 import type { Config } from "@react-router/dev/config";
+import fs from 'fs'
+
+const postSlugs = fs.readdirSync('./app/routes/posts/mdx');
 
 export default {
-  // Config options...
-  // Server-side render by default, to enable SPA mode set this to `false`
   ssr: true,
   async prerender() {
-    return [];
+    return [
+      '/posts',
+      ...postSlugs.map(slug => `/posts/${slug}`),
+    ];
   },
 } satisfies Config;

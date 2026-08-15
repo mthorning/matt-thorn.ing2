@@ -8,8 +8,8 @@ import {
 } from "react-router";
 
 import type { Route } from "./+types/root";
-import { CssSetup } from "~/css-vars";
-import "./app.css";
+import { CssSetup } from "~/styles/css-vars";
+import "./styles/app.css";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -46,7 +46,7 @@ export default function App() {
   return (
     <>
       <CssSetup />
-      <Outlet />;
+      <Outlet />
     </>
   );
 }

@@ -1,7 +1,6 @@
 import { useRef, type MutableRefObject, type ComponentProps, useState } from 'react';
 import clsx from 'clsx';
 import RainAnimation from './rain-animation';
-import { constants } from '~/css-vars';
 import classes from './home.module.css';
 import { FaGithub, FaLinkedin, FaBluesky } from 'react-icons/fa6';
 

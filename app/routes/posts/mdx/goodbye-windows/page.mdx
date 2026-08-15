@@ -1,0 +1,32 @@
+---
+date: "2019-03-31T22:30:00"
+title: "Goodbye Windows!"
+tags: ["linux"]
+published: true
+---
+
+![Windows blue screen](/posts/bsod-windows.jpg)
+
+I've always used Windows computers, I used them at work before I started doing what I do now, I used them at home for making music and editing photos and they're what I learned to code on. 
+
+When I interviewed for my first job as a UI developer I sat a desk-test where I was required to write JavaScript on an Apple iMac. It was the first time I had ever used a Mac, everything was familiar yet slightly different, it didn't help my interview nerves! 
+
+Once I started working as a developer I decided to treat myself to a new laptop for use at home. I considered getting an Apple because I was now using one at work, but I still wasn't very familiar with the OS and the amount of money Apple were asking for for a comparatively low spec seemed completely unreasonable - for the same amount of money or less, I could get a better processor and nearly twice as much RAM!
+
+As time went on I became more at-home on the Mac. I also learned more about how to use the command line, both on the Mac and in Linux virtual machines and became unhappy with my decision to purchase a Windows machine. I tried various terminal emulators, settling in the end for Git Bash which was the closest I could find to the shells I was using at work. I toyed with the idea of selling my laptop and purchasing a Mac but I knew I would lose a lot of money in doing so and I still wasn't overly enamoured with Apple's range of laptops.
+
+I decided to switch to Linux so I installed Ubuntu on my computer and fired it up. I already knew what to expect from the command line and I had seen screenshots online of the Ubuntu Desktop; I wasn't particularly impressed when I first opened it up though. The display seemed to lack resolution, it was nowhere near as crisp as OSX or Windows and the mouse cursor seemed disconnected with the motions applied to the touchpad, it seemed as if there was more latency than I was used to. I figured it was to be expected, Ubuntu is free after all, and I switched back to Windows to look for a different solution.
+
+It was around this time that I first heard about WSL ([Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/about)). WSL is a Linux filesystem upon which your Windows filesystem is mounted as if it were a physical drive (I don't think this is how it works under the bonnet but it's how it appears when you are using it). You are able to download different Linux distributions from the Microsoft store, and you can install more than one. Because it's a subsystem you need to install everything you want to use from the command line again, even if you already have it installed on Windows. 
+
+WSL worked fairly well for me for quite a while but things still felt fairly disjointed and I much preferred using my work's Mac for development. I also experienced issues with WSL whereby I would need to restart the "LxssManager" every time I booted the computer (I did fix this in the end but I have no idea now how I did it). I also found running processes such as Webpack very slow in comparison to my Mac (I managed to make a small gain by excluding WSL from Windows Defender) which I thought was because it had 8gb more RAM than my laptop but I know now that was not the case.
+
+So I had reached a compromise I could live with. Although it was still not as enjoyable working on my laptop as it was on my work computer, it was better than before and I no longer felt like throwing the laptop away. Unfortunately, when I turned on my computer the other morning, Windows decided that it was going to remind me that I was still very much a Windows user by presenting me with a big blue screen. For some reason the big blue screen (or System Service Exception according to the big blue screen) appeared when I attempted to pull from my remote git repository, I then had to sit and wait for some numbers to complete counting themselves to one hundred before the computer would allow itself to restart. When it rebooted I tried to pull my files again, this time Git was unable to find the _.git_ folder (it was still listed in the directory so I can only assume it had been corrupted). I tried to just clone a fresh copy from the remote repo and got the blue screen again! I opened my browser, was about to start looking for answers on Stack Overflow and then thought stuff this, let's try Linux again!
+
+I decided to spend a bit more time shopping around to see what was available this time. I knew that I was most familiar with Ubuntu and that Ubuntu is based on Debian. I also knew that the main thing I needed to find was a nice desktop to sit on top of either Debian or Ubuntu. Well, it turns out there are plenty of options to choose from, and in the end I decided to go with [KDE Neon](https://neon.kde.org/).
+
+KDE Neon is a collection of KDE community software installed onto Ubuntu. The desktop it uses is KDE's Plasma desktop which is really nice to use and fully configurable. One of the most important things in a desktop for me (especially on a laptop with a 13 inch screen!) is that it supports virtual desktops. Plasma does this really well and also has something called _activities_ which allow you to set up preset desktop configurations with different widgets for different activities. Because it's Ubuntu, the terminal experience is exactly what I wanted and it's as fast as my Mac - I've never seen Gatsby build so quickly! 
+
+The only problem I have encountered is with my trackpad. The system settings don't seem to have any affect on how the trackpad operates which means I haven't been able to invert the vertical scrolling and the timeout is a bit slower than I'm used to so I keep triggering the trackpad when typing which is a bit annoying. I'm sure it will be something that can be fixed, I just haven't bothered to look yet!
+
+Aside from that one small issue it's been really enjoyable switching to Linux and I can't see myself moving back to Windows. I encourage you to make the move if you're in a similar situation to me, just make sure you look around at what's available first to pick a distro you'll be happy with.

@@ -1,0 +1,431 @@
+---
+date: '2019-11-27T23:00:00'
+title: 'Composing Apps with React Hooks'
+tags: ['javascript', 'react', 'frontend', 'testing']
+published: true
+---
+
+import ExampleComponent from './CalculationExample'
+
+Deconstruction and composition are important techniques in software development; this is the act of taking a complex problem, dividing it into smaller problems and then composing the solutions to those problems (functions) into working software. By creating a layer of abstraction in those functions (that is to remove any details which make the function specific to that one problem), we can make our functions reusable so that they can then be combined with other functions to solve different problems.
+
+## Starting Out
+
+To try to demonstrate, this we're going to create a simple component which renders an input box where the user can enter a number. The component will then calculate 20% of the input value and write it back onto the screen.
+
+Here's the component:
+
+<ExampleComponent example="one" />
+
+Granted, it's not the best looking component but it will do for the purpose of this post! You may also be thinking that this isn't a particularly big "problem" to solve, but hopefully you'll see that there are benefits to using composition even at this scale.
+
+The component is _currently_ called `GetTwentyPercent` and is used by the application like this:
+
+```jsx
+function App() {
+  return (
+    <>
+      <p>Add a number to get 20%:</p>
+      <GetTwentyPercent />
+    </>
+  )
+}
+```
+
+This is the code for the component itself:
+
+```jsx
+import React, { useState, useEffect } from 'react'
+
+export default function GetTwentyPercent() {
+  const [inputNumber, setInputNumber] = useState(null)
+  function handleInputChange(event) {
+    setInputNumber(event.target.value)
+  }
+
+  const [result, setResult] = useState(null)
+  useEffect(() => {
+    setResult((inputNumber * 2) / 100)
+  }, [inputNumber])
+
+  return (
+    <>
+      <input type="number" onChange={handleInputChange} />
+      {inputNumber && (
+        <span>
+          20% of {inputNumber} is {result}
+        </span>
+      )}
+    </>
+  )
+}
+```
+
+If you look at the `return`, you will see that the component renders an `input` and conditionally renders a `span` if `inputNumber` is truthy. The `input`'s `onChange` event calls a function, `handleInputChange`, which sets the value as state on the component using a `useState` hook. There is a `useEffect` hook which watches for changes to this state variable; when the number changes, the calculation takes place and the result is stored in the `result` state variable which is displayed by the `span`.
+
+The problem with this component is that it only does one thing, it is completely inflexible. If we wanted to also display 30% of the input value then we would be unable to do so with this component. This is where composition comes in, by breaking your code into smaller parts it is possible to then compose those parts into solutions for different problems. Hooks allow us to do this very effectively. Let's abstract the logic away from this component so that it can be reused by a second component to display a different percentage.
+
+One thing I should probably mention here is that it might not always be right to do what we are about to do. If you know that, in your application, you will only ever need this component to display 20% of a number then there is nothing wrong with it as it is. It may be that we just need to add a prop so that the percentage can be changed from 20% to any other number. In software there are always trade-offs to be aware of; where you gain in one area, you lose in another. By making your component more flexible you are also adding more complexity which means the chance of there being bugs in the code increases. This means that more unit tests are required which incurs more maintenance cost. This is worthwhile if the flexibility is utilised but if the additional functionality is never used then it is all cost with no benefit.
+
+There are two principles which we should keep in mind whilst developing the solution for our problem. These are [DRY](https://en.wikipedia.org/wiki/Don%27t_repeat_yourself), (Don't Repeat Yourself) which is aimed at reducing repetitive code and [YAGNI](https://en.wikipedia.org/wiki/You_aren%27t_gonna_need_it), (You Aren't Gonna Need It), which is about not adding functionality until it is needed. Both of these principles work towards making code more maintainable. This isn't to say that you shouldn't be thinking about different ways in which your components may be used in the future; making a component that can easily be extended for use in other situations is very different to making a component which attempts to account for a multitude of uses which don't (and may never) exist.
+
+We are going to iterate over our component several times, each time adding further layers of abstraction. First though we will move the calculation logic into a custom hook.
+
+## Creating a Hook
+
+```jsx
+import { useEffect, useState } from 'react'
+
+export default function usePercentage(percentage) {
+  const [inputNumber, setInputNumber] = useState(null)
+
+  const [result, setResult] = useState(null)
+  useEffect(() => {
+    setResult((inputNumber * percentage) / 100)
+  }, [inputNumber, percentage])
+
+  return [result, inputNumber, setInputNumber]
+}
+```
+
+This is our new `usePercentage` hook. It performs the same function as the logic in our component with one key difference; it is now called with a `percentage` variable which means we can use it to calculate any percentage we like. The hook returns three variables: `result` is the output of the calculation, `setInputNumber` is a function which the component will call with the value from the input and `inputNumber` is that number which `setInputNumber` is called with (this may seem strange but hopefully you will see why this is useful later).
+
+Now lets change our component to use the hook:
+
+```jsx
+import React from 'react';
++import usePercentage from './usePercentage';
+
+export default function GetTwentyPercent() {
+-  const [inputNumber, setInputNumber] = useState(null);
++  const [result, inputNumber, setInputNumber] = usePercentage(20);
+  function handleInputChange(event) {
+    setInputNumber(event.target.value);
+  }
+
+-  const [result, setResult] = useState(null);
+-  useEffect(() => {
+-    setResult((inputNumber * 2) / 100);
+-  }, [inputNumber]);
+
+
+return (
+    <>
+      <input type="number" onChange={handleInputChange} />
+      {inputNumber && (
+        <span>
+          20% of {inputNumber} is {result}
+        </span>
+      )}
+    </>
+  );
+}
+```
+
+The change handler is still called by the `input` but this time it calls the `setInputNumber` function from the `usePercentage` hook. The `result` and `inputNumber` values are used in the message displayed by the `span`.
+
+We can now clone the component and make a few small changes for the `GetThirtyPercent` component:
+
+```jsx
+import React from 'react';
+import usePercentage from './usePercentage';
+
+-export default function GetTwentyPercent() {
+-  const [result, inputNumber, setInputNumber] = usePercentage(20);
++export default function GetThirtyPercent() {
++  const [result, inputNumber, setInputNumber] = usePercentage(30);
+
+  function handleInputChange(event) {
+    setInputNumber(event.target.value);
+  }
+
+  return (
+    <>
+      <input type="number" onChange={handleInputChange} />
+      {inputNumber && (
+        <span>
+-          20% of {inputNumber} is {result}
++          30% of {inputNumber} is {result}
+        </span>
+      )}
+    </>
+  );
+}
+```
+
+And use it like this:
+
+```jsx
+function App() {
+  return (
+    <>
+      <p>Add a number to get 20%:</p>
+      <GetTwentyPercent />
+
+      <p>Add a number to get 30%:</p>
+      <GetThirtyPercent />
+    </>
+  )
+}
+```
+
+<ExampleComponent example="two" />
+
+Job done! But hang on, there's still a lot of redundant repetition there, the two components are basically identical with a couple of small changes. It would make sense to abstract the problem further and have just the one component which can be controlled with a percentage prop.
+
+## A More Flexible Component
+
+Let's get rid of the `GetTwentyPercent` and `GetThirtyPercent` components and replace them with `GetPercentage`:
+
+```jsx
+import React from 'react';
+import usePercentage from './usePercentage';
+
+-export default function GetTwentyPercent() {
+-  const [result, inputNumber, setInputNumber] = usePercentage(20);
++export default function GetPercentage({ percentage }) {
++  const [result, inputNumber, setInputNumber] = usePercentage(percentage);
+
+  function handleInputChange(event) {
+    setInputNumber(event.target.value);
+  }
+
+  return (
+    <>
+      <input type="number" onChange={handleInputChange} />
+      {inputNumber && (
+        <span>
+-          20% of {inputNumber} is {result}
++          {percentage}% of {inputNumber} is {result}
+        </span>
+      )}
+    </>
+  );
+}
+```
+
+This is only a small change but it means that we can use this component for any percentage we want, think of the possibilities!
+
+```jsx
+function App() {
+  return (
+    <>
+      <p>Add a number to get 20%:</p>
+      <GetPercentage percentage={20} />
+
+      <p>Add a number to get 30%:</p>
+      <GetPercentage percentage={30} />
+
+      <p>Add a number to get 81%:</p>
+      <GetPercentage percentage={81} />
+    </>
+  )
+}
+```
+
+But maybe we are still thinking too small. Is our application only concerned with percentages or are there other calculations to be made as well? If we look at what our component does we can see that it just takes a number from an input, passes it to a function (our hook) and displays the result. We can abstract the problem away further by removing any mention of percentages, passing a hook in instead of importing it and changing the display message so that it can be configured for each use case:
+
+```jsx
+import React from 'react';
+-import usePercentage from './usePercentage';
++import PropTypes from 'prop-types';
+
++const propTypes = {
++  operand: PropTypes.number.isRequired,
++  useCalculation: PropTypes.func.isRequired,
++  resultMessage: PropTypes.func.isRequired
++};
+
+-export default function GetPercentage({ percentage }) {
+-  const [result, inputNumber, setInputNumber] = usePercentage(percentage);
++function GetCalculation(props) {
++  const { operand, useCalculation, resultMessage } = props;
++  const [result, inputNumber, setInputNumber] = useCalculation(operand);
+
+  function handleInputChange(event) {
+    setInputNumber(event.target.value);
+  }
+
+  return (
+    <>
+      <input type="number" onChange={handleInputChange} />
+      {inputNumber && (
+        <span>
+-          {percentage}% of {inputNumber} is {result}
++          {resultMessage(inputNumber, operand, result)}
+        </span>
+      )}
+    </>
+  );
+}
+
++GetCalculation.propTypes = propTypes;
++export default GetCalculation;
+```
+
+We now accept `useCalculation` from the parent instead of importing the usePercentage hook. We have also renamed the percentage variable to `operand` because we don't know what the `useCalculation` hook is going to use that number for. `resultMessage` is a function which is called with the two numbers used by the calculation and the result, this means that a different message can be constructed for each use case.
+
+I have also added [PropTypes](https://reactjs.org/docs/typechecking-with-proptypes.html) to the component. When you start creating components which will be used for different purposes you should start thinking about the set of props it accepts as an API. Therefore, it is a good idea to add PropTypes as an easy way of documenting and enforcing which props the component accepts, the type of each prop and whether it is required or optional.
+
+This is how the component could now be used by our application:
+
+```jsx
+function App() {
+  return (
+    <>
+      <p>Add a number to get 20%:</p>
+      <GetCalculation
+        operand={operand}
+        useCalculation={usePercentage}
+        resultMessage={(input, result, operand) =>
+          `${operand}% of ${inputNumber} is ${result}`
+        }
+      />
+
+      <p>Add the circle's radius to get the area:</p>
+      <GetCalculation
+        calc={radiusCalc}
+        resultMessage={(input, result, operand) =>
+          `The circle's area is ${result.toFixed(2)}`
+        }
+      />
+    </>
+  )
+}
+```
+
+The first instance of the component uses the `usePercentage` hook and displays the same message we've already seen. Below that it is used with a different hook, `radiusCalc`, for a different purpose:
+
+<ExampleComponent example="three" />
+
+## Adding Defaults
+
+You should now be able to see now that the component could be used for any number of different uses. We could continue adding layers of abstraction; for example, we don't need to restrict the component to only processing numbers, we could easily manipulate text as well with only a few small changes, give it a try if you like!
+
+One downside here is that there is now a lot of configuration required each time the component is used. If the component is going to be used in a different way each time then this is fine, but if the component is going to be used to calculate 20% a lot of times and only used for a different purpose occasionally then it would be better if it were possible to do this:
+
+```jsx
+function App() {
+  const GetTwentyPercent = GetCalculation
+
+  return (
+    <>
+      <p>Add a number to get 20%:</p>
+      <GetTwentyPercent />
+
+      <p>Add the circle's radius to get the area:</p>
+      <GetCalculation
+        calc={radiusCalc}
+        resultMessage={(input, result, operand) =>
+          `The circle's area is ${result.toFixed(2)}`
+        }
+      />
+    </>
+  )
+}
+```
+
+Notice that I have created a new variable call `GetTwentyPercent` which just references `GetCalculation`. This is important because it lets readers of the code know what the component is doing. One of React's key strengths is its declarative nature; it would not be very helpful to use `GetCalculation` without any props because nobody would have any idea what it does!
+
+We can use `defaultProps` in the same way as `propTypes`. We will again import the `usePercentage` hook into the component and use it if no `useCalculation` prop is supplied:
+
+```jsx
+import React from 'react';
+import PropTypes from 'prop-types';
++import usePercentage from './usePercentage';
+
+const propTypes = {
+  operand: PropTypes.number,
+  useCalculation: PropTypes.func,
+  resultMessage: PropTypes.func
+};
+
++const defaultProps = {
++  operand: 20,
++  useCalculation: usePercentage,
++  resultMessage: (inputNumber, operand, result) => (
++    `${operand}% of ${inputNumber} is ${result}`;
++  )
++};
+
+function GetCalculation(props) {
+  const { operand, useCalculation, resultMessage } = props;
+  const [result, inputNumber, setInputNumber] = useCalculation(operand);
+
+  function handleInputChange(event) {
+    setInputNumber(event.target.value);
+  }
+
+  return (
+    <>
+      <input type="number" onChange={handleInputChange} />
+      {inputNumber && (
+        <span>
+          {resultMessage(inputNumber, operand, result)}
+        </span>
+      )}
+    </>
+  );
+}
+
+GetCalculation.propTypes = propTypes;
++GetCalculation.defaultProps = defaultProps;
+export default GetCalculation;
+```
+
+Now the component will default to calculating 20% of the input value but each prop can be overridden so that the purpose of the component can be completely changed.
+
+## Testing Hooks
+
+A big advantage of writing reusable code is that you can write one set of tests and feel happy that you have covered a good percentage of the functionality of your application. Splitting logic up also makes testing easier; if I am struggling to write a set of tests, I see that as an indication that the code that I am testing is probably doing too much and could likely be broken down into smaller parts.
+
+Testing our `GetCalculation` component is now fairly straightforward. We can pass mock functions into the component in place of `useCalculation` and `resultMessage` and assert on what our component is calling those functions with.
+
+Testing the hooks themselves is a little different. Hooks are still pretty new and I haven't seen any best practices about how to test them yet. I want to share a method that I have been using, maybe you will find it helpful, maybe you will think it is completely wrong!
+
+I normally use [Jest](https://jestjs.io/) with [React Testing Library](https://testing-library.com/docs/react-testing-library/intro). I like React Testing Library although I'm not really using it in the way that it has been designed to be used here. The concept is that you should be interacting with your component as a user would, but that's not what we're going to do. The main reason I'm using it is that it works well with hooks whereas I've had problems getting other testing libraries to work with them.
+
+In order to test the hook, we need to use it in a component, so we will create a simple component which uses the hook and then passes the hook's return values into a mock function:
+
+```jsx
+import React, { useEffect } from 'react'
+import { cleanup, render } from '@testing-library/react'
+import usePercentage from './usePercentage'
+
+describe('Testing the usePercentage hook', () => {
+  const StubComponent = jest.fn(() => null)
+
+  const TestComponent = ({ percentage, input }) => {
+    const [result, inputNumber, setInputNumber] = usePercentage(percentage)
+    useEffect(() => {
+      setInputNumber(input)
+    }, [setInputNumber, input])
+
+    return <StubComponent {...{ result, inputNumber }} />
+  }
+
+  test('returns 20% of 100', () => {
+    render(<TestComponent percentage={20} input={100} />)
+
+    expect(StubComponent).toHaveBeenLastCalledWith(
+      {
+        result: 20,
+        inputNumber: 100,
+      },
+      {}
+    )
+  })
+})
+```
+
+First we create the stub function on _line 7_. This function needs to return `null` (or another component/ HTML element) because it has to act like a React component. Next, on _line 9_ is the `TestComponent` which uses the hook and passes the resultant values into the `StubComponent` on _line15_.
+
+In our test on _line 18_, we `render` the `TestComponent` with the props which we want to pass into the hook. We can then assert on the `StubComponent`. Here I am using Jest's `toHaveBeenLastCalledWith` method because we are only interested in the last set of props passed into the `StubComponent`. You may have noticed that we are expecting the `StubComponent` to be called with two arguments, one is our set of props and the other is an empty object. React calls all components with a second argument called `refOrContext`, if we don't `expect` it to be included then our tests will fail.
+
+If we run the test we can see that it passes:
+
+![screenshot of tests passing](/posts/tests_passed_screenshot.png)
+
+---
+
+I hope this post has been useful, I feel like there is more text than usual so I apologise if it's been a bit much but well done for reaching the end!
