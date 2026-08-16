@@ -27,6 +27,16 @@
   max-width: 800px;
   margin: 32px auto;
 
+  pre.shiki {
+    overflow-x: auto;
+    max-width: 100%;
+  }
+
+  pre.shiki code {
+    white-space: pre;
+    word-break: normal;
+  }
+
   b,
   strong {
     font-weight: inherit;

@@ -10,11 +10,13 @@
   }
 }
 
-pre.shiki code {
-  white-space: pre;
+pre.shiki {
+  overflow-x: auto;
+  max-width: 100%;
 }
 
-/* If the extra space is caused by a empty top pseudo-element or line-height reset */
 pre.shiki > code {
   display: block;
+  white-space: pre;
+  word-break: normal;
 }

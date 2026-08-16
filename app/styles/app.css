@@ -22,22 +22,18 @@
   color-scheme: light dark;
 }
 
-/* 1. Use a more-intuitive box-sizing model */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
 
-/* 2. Remove default margin */
 * {
   margin: 0;
 }
 
 body {
-  /* 3. Add accessible line-height */
   line-height: 1.5;
-  /* 4. Improve text rendering */
   -webkit-font-smoothing: antialiased;
   font-size: 16px;
 
@@ -53,7 +49,6 @@ h3 {
   color: light-dark(var(--light-secondary), var(--dark-secondary));
 }
 
-/* 5. Improve media defaults */
 img,
 picture,
 video,
@@ -63,7 +58,12 @@ svg {
   max-width: 100%;
 }
 
-/* 6. Inherit fonts for form controls */
+button {
+  cursor: pointer;
+  border: none;
+  padding: 2px 8px;
+}
+
 input,
 button,
 textarea,
@@ -71,7 +71,6 @@ select {
   font: inherit;
 }
 
-/* 7. Avoid text overflows */
 p,
 a,
 button,
@@ -95,7 +94,6 @@ a:hover {
   border-color: light-dark(var(--light-accent), var(--dark-accent));
 }
 
-/* 8. Improve line wrapping */
 p {
   text-wrap: pretty;
 }
@@ -109,9 +107,6 @@ h6 {
   text-wrap: balance;
 }
 
-/*
-  9. Create a root stacking context
-*/
 #root,
 #__next {
   isolation: isolate;

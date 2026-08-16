@@ -22,3 +22,13 @@
   color: var(--neutral);
 }
 
+.tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.selectedTag {
+  background: var(--accent);
+}
