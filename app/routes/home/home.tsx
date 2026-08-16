@@ -3,7 +3,7 @@ import clsx from 'clsx';
 import RainAnimation from './rain-animation';
 import classes from './home.module.css';
 import { FaGithub, FaLinkedin, FaBluesky, FaBars } from 'react-icons/fa6';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
 
 function A(props: ComponentProps<'a'>) {
   return <a {...props} target="_blank" rel="noopener noreferrer" />;
@@ -15,6 +15,7 @@ function LinksCard({ toggle }: { toggle: () => void }) {
       <div className={classes.cardContent}>
         <div className={classes.linksContent}>
           <Link to="/posts">Posts</Link>
+          <Link to="/photos">Photos</Link>
           <button className={classes.linkButton} type="button" onClick={toggle}>About</button>
         </div>
       </div>
@@ -24,7 +25,7 @@ function LinksCard({ toggle }: { toggle: () => void }) {
   );
 }
 
-function About({ toggle }: { toggle: () => void }) {
+function About() {
   return (
     <div className={classes.card}>
       <div className={classes.cardContent}>
@@ -71,7 +72,13 @@ function BusinessCard({
 }: {
   objRef: MutableRefObject<HTMLDivElement | null>;
 }) {
-  const [currentView, setCurrentView] = useState<'about' | 'links'>('about');
+  const location = useLocation();
+  const search = new URLSearchParams(location.search)
+
+  const [currentView, setCurrentView] = useState<'about' | 'links'>(
+    search.get('view') === 'links' ? 'links' : 'about'
+  );
+
   const toggleView = () => {
     setCurrentView((prev) => (prev === 'about' ? 'links' : 'about'));
   };
@@ -96,7 +103,7 @@ function BusinessCard({
         <button type="button" className={clsx(classes.linkButton, classes.hamburgerButton)} onClick={toggleView}>
           <FaBars />
         </button>
-        <About toggle={toggleView} />
+        <About />
       </div>
     </div>
   );

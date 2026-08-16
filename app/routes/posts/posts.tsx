@@ -2,12 +2,10 @@ import { Link } from "react-router";
 import classes from "./posts.module.css";
 import { getAllPosts } from "./utils";
 import type { Route } from "./+types/posts";
-import { Back } from '~/components/back';
 import { useMemo, useState } from "react";
 import { clsx } from "clsx";
 
 export function loader() {
-
   const posts = getAllPosts();
   const tags = new Set<string>();
   posts.forEach(post => post.metadata.tags.forEach(tag => tags.add(tag)));
@@ -32,8 +30,7 @@ export default function Posts({ loaderData }: Route.ComponentProps) {
     ), [loaderData.posts, selectedTag])
 
   return (
-    <div className={classes.container}>
-      <Back page="home" to="/" />
+    <>
       <div className={classes.tags}>
         {loaderData.tags.map(tag => <button
           type="button"
@@ -52,6 +49,6 @@ export default function Posts({ loaderData }: Route.ComponentProps) {
           </Link>
         ))}
       </div>
-    </div>
+    </>
   );
 }

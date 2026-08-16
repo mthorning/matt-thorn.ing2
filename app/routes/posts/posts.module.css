@@ -1,9 +1,4 @@
 
-.container {
-  max-width: 500px;
-  margin: 32px auto;
-}
-
 .posts {
   display: flex;
   flex-direction: column;
