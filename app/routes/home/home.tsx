@@ -2,7 +2,8 @@ import { useRef, type MutableRefObject, type ComponentProps, useState } from 're
 import clsx from 'clsx';
 import RainAnimation from './rain-animation';
 import classes from './home.module.css';
-import { FaGithub, FaLinkedin, FaBluesky } from 'react-icons/fa6';
+import { FaGithub, FaLinkedin, FaBluesky, FaBars } from 'react-icons/fa6';
+import { Link } from 'react-router';
 
 function A(props: ComponentProps<'a'>) {
   return <a {...props} target="_blank" rel="noopener noreferrer" />;
@@ -11,12 +12,11 @@ function A(props: ComponentProps<'a'>) {
 function LinksCard({ toggle }: { toggle: () => void }) {
   return (
     <div className={classes.card}>
-      <div className={classes.cardHeader}>
-        <h1>Welcome</h1>
-        <h3>It&apos;s not much, but it&apos;s home</h3>
-      </div>
       <div className={classes.cardContent}>
-        <button type="button" onClick={toggle}>About</button>
+        <div className={classes.linksContent}>
+          <Link to="/posts">Posts</Link>
+          <button className={classes.linkButton} type="button" onClick={toggle}>About</button>
+        </div>
       </div>
       <div className={classes.cardFooter}>
       </div>
@@ -30,6 +30,7 @@ function About({ toggle }: { toggle: () => void }) {
       <div className={classes.cardContent}>
         <div className={classes.aboutContent}>
           <div className={classes.aboutName}>
+            <img className={classes.profilePic} src="https://github.com/mthorning.png" alt="Profile Photo" />
             <h1>Matt Thorning</h1>
             <h3>Software engineer</h3>
           </div>
@@ -48,7 +49,6 @@ function About({ toggle }: { toggle: () => void }) {
               </p>
             </div>
             <div className={classes.aboutFooter}>
-              {/* <button onClick={() => goBack()}>flip</button> */}
               <A href="https://linkedin.com/in/matt-thorning-39a858120">
                 <FaLinkedin />
               </A>
@@ -61,7 +61,6 @@ function About({ toggle }: { toggle: () => void }) {
             </div>
           </div>
         </div>
-        <button type="button" onClick={toggle}>Links</button>
       </div>
     </div>
   );
@@ -94,6 +93,9 @@ function BusinessCard({
         ref={currentView === 'about' ? objRef : null}
         className={clsx(classes.box, classes.about)}
       >
+        <button type="button" className={clsx(classes.linkButton, classes.hamburgerButton)} onClick={toggleView}>
+          <FaBars />
+        </button>
         <About toggle={toggleView} />
       </div>
     </div>

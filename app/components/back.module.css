@@ -1,0 +1,8 @@
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 32px;
+  border-bottom: 0.5px solid var(--neutral);
+}
+

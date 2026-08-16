@@ -1,91 +1,24 @@
-/* General Body Styling */
-body {
-  line-height: 1.6; /* More space between lines for readability */
-  margin: 0;
-  padding: 0;
-  background-color: light-dark(var(--light-base-100), var(--dark-base-100));
-}
 
-/* Container to hold content, for better margins */
 .container {
-  width: 85%;
-  max-width: 800px;
-  margin: 20px auto;
-  padding: 20px 32px 32px;
-  background-color: light-dark(var(--light-base-100), var(--dark-base-200));
-  border-radius: 8px;
-  box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+  max-width: 500px;
+  margin: 32px auto;
 }
 
-@media (max-width: 700px) {
-  .container {
-    width: 100%;
-    padding: 12px;
-    margin: 0;
-  }
+.posts {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-/* Headings */
-h1,
-h2,
-h3 {
-  margin-bottom: 0.5em;
+.post {
+  border: 1px solid var(--neutral);
+  border-radius: 6px;
+  padding: 8px;
+}
+.post:hover {
+  border-color: var(--accent);
+  outline: 1px solid var(--accent);
+  background: var(--base-300);
+  color: var(--neutral);
 }
 
-h1 {
-  font-size: 2.5em;
-  margin-top: 0;
-}
-
-h2 {
-  font-size: 2em;
-  border-bottom: 2px solid #ddd; /* Subtle underline for emphasis */
-  padding-bottom: 5px;
-}
-
-h3 {
-  font-size: 1.75em;
-  margin-bottom: 0.5em;
-}
-
-/* Paragraphs */
-p {
-  font-size: 1.3em;
-  margin-bottom: 1.2em;
-}
-
-/* Blockquotes */
-blockquote {
-  font-style: italic;
-  padding: 10px 15px;
-  margin: 20px 0;
-}
-
-/* Lists */
-ul,
-ol {
-  margin-left: 20px;
-}
-
-ul li,
-ol li {
-  margin-bottom: 10px;
-}
-
-/* Code snippets */
-code {
-  padding: 3px 5px;
-  border-radius: 5px;
-}
-
-/* Images */
-img {
-  max-width: 100%;
-  height: auto;
-  display: block;
-  margin: 20px 0;
-}
-
-hr {
-  margin: 32px 0;
-}

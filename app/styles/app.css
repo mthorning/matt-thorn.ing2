@@ -7,11 +7,17 @@
 }
 
 :root {
-  --dark-base-100: '#1d232a';
-  --light-base-100: '#faf7f5';
-  --background: light-dark(var(--light-base-100), var(--dark-base-100));
-  --color: light-dark(var(--light-neutral), var(--dark-neutral));
+  --primary: light-dark(var(--light-primary), var(--dark-primary));
+  --secondary: light-dark(var(--light-secondary), var(--dark-secondary));
   --accent: light-dark(var(--light-accent), var(--dark-accent));
+  --neutral: light-dark(var(--light-neutral), var(--dark-neutral));
+  --base-100: light-dark(var(--light-base-100), var(--dark-base-100));
+  --base-200: light-dark(var(--light-base-200), var(--dark-base-200));
+  --base-300: light-dark(var(--light-base-300), var(--dark-base-300));
+  --base-content: light-dark(var(--light-base-content), var(--dark-base-content));
+
+  --color: light-dark(var(--light-neutral), var(--dark-neutral));
+  --background: light-dark(var(--light-base-100), var(--dark-base-100));
 
   color-scheme: light dark;
 }
@@ -68,6 +74,7 @@ select {
 /* 7. Avoid text overflows */
 p,
 a,
+button,
 h1,
 h2,
 h3,
@@ -81,8 +88,6 @@ h6 {
 a {
   color: light-dark(var(--light-base-content), var(--dark-base-content));
   text-decoration: none;
-  border-bottom: 0.5px solid
-    light-dark(var(--light-neutral), var(--dark-neutral));
 }
 
 a:hover {

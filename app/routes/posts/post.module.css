@@ -17,13 +17,6 @@
   font-size: 2em;
 }
 
-.back {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 32px;
-}
-
 .ageWarningMessage {
   font-size: 1em;
   margin: 0;

@@ -1,7 +1,7 @@
 .container {
   background: linear-gradient(
-    light-dark(var(--light-base-100), var(--dark-base-100)) 30%,
-    light-dark(var(--light-base-300), var(--dark-base-300))
+    var(--base-100) 30%,
+    var(--base-300)
   );
 }
 
@@ -22,19 +22,35 @@
   box-sizing: border-box;
 }
 
+.linkButton {
+  background: none;
+  border: none;
+  color: var(--base-content);
+  cursor: pointer;
+}
+
+.hamburgerButton {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+}
+
+.linkButton:hover {
+  color: var(--accent)
+}
+
 .box {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   padding: 32px 0;
-  background: light-dark(var(--light-base-200), var(--dark-base-200));
-  border: 2px double light-dark(var(--light-secondary), var(--dark-secondary));
+  background: var(--base-200);
+  border: 2px double var(--secondary);
 
   transition: transform calc(var(--const-transition-speed, 500) * 1ms) ease-in-out;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  transform-style: preserve-3d;
 }
 
 .card {
@@ -54,11 +70,26 @@
   padding: 8px;
 }
 
-.links {
+.links{
+  font-size: 1.5em;
+}
+
+.profilePic {
+  border-radius: 50px;
+  width: 72px;
+  margin: 0 0 16px;
+}
+
+.linksContent {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
 }
 
 .about {
   padding: 32px 8px;
+  position: relative;
 }
 
 .aboutContent {
@@ -72,11 +103,17 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: center;
   height: 100%;
 }
 
 .aboutName h1 {
   line-height: 32px;
+  font-size: 1.5em;
+}
+
+.aboutName h3 {
+  font-size: 1.1em;
 }
 
 .aboutLinks {
@@ -86,9 +123,11 @@
   height: 100%;
   padding-top: 24px;
 }
+
 .aboutLinks p {
   word-break: break-word;
   margin-top: 20px;
+  font-size: 1em;
 }
 
 .aboutLinks p a {
@@ -108,7 +147,7 @@
 
 .separator {
   height: 100%;
-  background: light-dark(var(--light-base-content), var(--dark-base-content));
+  background: var(--base-content);
   width: 0.5px;
   margin: 0 8px;
 }

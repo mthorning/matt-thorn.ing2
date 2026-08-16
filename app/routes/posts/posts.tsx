@@ -1,16 +1,19 @@
 import { Link } from "react-router";
-import "./posts.module.css";
+import classes from "./posts.module.css";
 import { getAllPosts } from "./utils";
 import type { Route } from "./+types/posts";
+import { Back } from '~/components/back';
 
 export function loader() {
   const posts = getAllPosts();
   return { posts };
 }
 
-export default function Posts({ loaderData }: Route.ComponentProps ) {
+export default function Posts({ loaderData }: Route.ComponentProps) {
   return (
-      <main className="container line-numbers">
+    <div className={classes.container}>
+      <Back page="home" to="/" />
+      <div className={classes.posts}>
         {loaderData.posts
           .sort((a, b) => {
             if (new Date(a.metadata.date) > new Date(b.metadata.date)) {
@@ -18,13 +21,16 @@ export default function Posts({ loaderData }: Route.ComponentProps ) {
             }
             return 1;
           })
-          .map((post) => (
-            <Link key={post.slug} to={`/posts/${post.slug}`}>
-              <div>
-                <h3>{post.metadata.title}</h3>
+          .map(({ slug, metadata: { title, tags, date } }) => (
+            <Link key={slug} to={`/posts/${slug}`}>
+              <div className={classes.post}>
+                <h3>{title}</h3>
+                <p>{Intl.DateTimeFormat(navigator.language).format(new Date(date))}</p>
+                <p>{tags.join(', ')}</p>
               </div>
             </Link>
           ))}
-      </main>
+      </div>
+    </div>
   );
 }
