@@ -1,0 +1,23 @@
+.page {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+}
+
+.selectedImage {
+  flex-grow: 2;
+}
+
+.gallery {
+  height: 100px;
+  max-width: 100%;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+}
+.gallery > a {
+  flex: 0 0 100px;
+}
+

@@ -11,5 +11,6 @@ export default [
     route('/posts', 'routes/posts/posts.tsx'),
     route('/posts/:slug', 'routes/posts/post.tsx'),
     route('/photos', 'routes/photos/photos.tsx'),
+    route('/photos/:filename', 'routes/photos/photo.tsx'),
   ]),
 ] satisfies RouteConfig;

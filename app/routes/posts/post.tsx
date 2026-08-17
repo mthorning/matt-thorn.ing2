@@ -39,7 +39,7 @@ export default function Post({ loaderData }: Route.ComponentProps) {
           </p>
         </div>
       ) : null}
-      <main><Component /></main>
+      <main className={classes.content}><Component /></main>
     </>
   );
 }
