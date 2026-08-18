@@ -2,6 +2,7 @@ import { Link } from 'react-router';
 import type { Route } from './+types/photos';
 import classes from './photos.module.css';
 import { getImageURLs } from './utils';
+import { Thumbnail } from './thumbnail';
 
 
 export async function loader() {
@@ -20,9 +21,7 @@ export default function Photos({ loaderData }: Route.ComponentProps) {
   return (
     <div className={classes.gallery}>
       {loaderData?.data?.map(datum => (
-        <Link to={datum.filename}>
-          <img src={datum.thumbUrl} />
-        </Link>
+        <Thumbnail key={datum.filename} datum={datum} />
       ))}
     </div>
   );

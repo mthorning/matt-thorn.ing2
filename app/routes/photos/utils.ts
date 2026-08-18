@@ -7,20 +7,22 @@ const BUCKET = process.env['S3_BUCKET'];
 const CLOUDFRONT_URL = process.env['CLOUDFRONT_URL'];
 const PREFIX = 'photos/';
 
-const getS3Client = (token?: string) => new S3Client({
-  region: REGION,
-  credentials: fromCognitoIdentityPool({
-    clientConfig: { region: REGION },
-    identityPoolId: POOL_ID ?? '',
-    ...(token
-      ? {
-        logins: {
-          [`cognito-idp.${REGION}.amazonaws.com/us-east-1_pA7PzQG2L`]: token,
-        },
-      }
-      : {}),
-  }),
-});
+const getS3Client = (token?: string) =>
+  new S3Client({
+    region: REGION,
+    credentials: fromCognitoIdentityPool({
+      clientConfig: { region: REGION },
+      identityPoolId: POOL_ID ?? '',
+      ...(token
+        ? {
+            logins: {
+              [`cognito-idp.${REGION}.amazonaws.com/us-east-1_pA7PzQG2L`]:
+                token,
+            },
+          }
+        : {}),
+    }),
+  });
 
 const resizeObjects = {
   thumbnail: {
@@ -39,7 +41,10 @@ const resizeObjects = {
   },
 } as const;
 
-function getImageUrl(filename: string, resizeObject: keyof typeof resizeObjects): string {
+function getImageUrl(
+  filename: string,
+  resizeObject: keyof typeof resizeObjects
+): string {
   const request = {
     bucket: BUCKET,
     key: `${PREFIX}${filename}`,
@@ -51,7 +56,7 @@ function getImageUrl(filename: string, resizeObject: keyof typeof resizeObjects)
   return `${CLOUDFRONT_URL}${enc}`;
 }
 
-type Datum = Record<'fullsizeUrl' | 'thumbUrl' | 'filename', string>;
+export type Datum = Record<'fullsizeUrl' | 'thumbUrl' | 'filename', string>;
 
 export async function getImageURLs(): Promise<Datum[]> {
   const command = new ListObjectsV2Command({
@@ -76,7 +81,6 @@ export async function getImageURLs(): Promise<Datum[]> {
     }, []);
 
     return data ?? [];
-
   } catch (e) {
     throw new Response('Error fetching images', {
       status: 500,

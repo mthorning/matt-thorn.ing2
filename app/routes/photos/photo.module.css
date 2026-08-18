@@ -10,12 +10,20 @@
   flex-grow: 2;
 }
 
+.selectedImage > img {
+  border: 8px solid light-dark(var(--light-base-300), var(--dark-base-200));
+  outline: 8px solid light-dark(var(--light-base-200), var(--dark-base-300));
+  max-height: calc(100vh - 250px);
+}
+
 .gallery {
   height: 100px;
   max-width: 100%;
   display: flex;
   gap: 8px;
   overflow-x: auto;
+  padding: 24px 0;
+  box-sizing: content-box;
 }
 .gallery > a {
   flex: 0 0 100px;

@@ -85,21 +85,16 @@ function BusinessCard({
 
   return (
     <div
+      ref={objRef}
       className={clsx(classes.perspectiveContainer, {
         [classes.showAbout]: currentView === 'about',
         [classes.showLinks]: currentView === 'links',
       })}
     >
-      <div
-        ref={currentView === 'links' ? objRef : null}
-        className={clsx(classes.box, classes.links)}
-      >
+      <div className={clsx(classes.box, classes.links)} >
         <LinksCard toggle={toggleView} />
       </div>
-      <div
-        ref={currentView === 'about' ? objRef : null}
-        className={clsx(classes.box, classes.about)}
-      >
+      <div className={clsx(classes.box, classes.about)} >
         <button type="button" className={clsx(classes.linkButton, classes.hamburgerButton)} onClick={toggleView}>
           <FaBars />
         </button>

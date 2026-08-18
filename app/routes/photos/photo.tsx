@@ -2,6 +2,7 @@ import { Link } from 'react-router';
 import type { Route } from './+types/photo';
 import classes from './photo.module.css';
 import { getImageURLs } from './utils';
+import { Thumbnail } from './thumbnail';
 
 export const handle = {
   Breadcrumb: () => <Link to="/photos">Photos</Link>,
@@ -13,11 +14,8 @@ export async function loader({ params }: Route.LoaderArgs) {
     const selectedImage = data.find(
       (datum) => datum.filename === params.filename
     );
-    const galleryImages = data.filter(
-      (datum) => datum.filename !== params.filename
-    );
 
-    return { selectedImage, galleryImages };
+    return { selectedImage, galleryImages: data };
   } catch (_) {
     throw new Response('Error fetching images', {
       status: 500,
@@ -34,9 +32,7 @@ export default function Photos({ loaderData }: Route.ComponentProps) {
       </div>
       <div className={classes.gallery}>
         {loaderData?.galleryImages?.map((datum) => (
-          <Link to={datum.filename}>
-            <img src={datum.thumbUrl} />
-          </Link>
+          <Thumbnail key={datum.filename} datum={datum} />
         ))}
       </div>
     </div>

@@ -1,7 +1,7 @@
-"use client";
-import { useEffect, useRef, type MutableRefObject } from "react";
-import { colours } from "~/styles/css-vars";
-import { useColourScheme } from "~/hooks";
+'use client';
+import { useEffect, useRef, type MutableRefObject } from 'react';
+import { colours } from '~/styles/css-vars';
+import { useColourScheme } from '~/hooks';
 
 export default function RainAnimation({
   objRef,
@@ -14,7 +14,7 @@ export default function RainAnimation({
   useEffect(() => {
     if (!canvasRef?.current) return;
 
-    const context = canvasRef.current.getContext("2d");
+    const context = canvasRef.current.getContext('2d');
     let objCoords: DOMRect | undefined;
 
     function setCoords() {
@@ -28,11 +28,11 @@ export default function RainAnimation({
       }
       setCoords();
     }
-    window.addEventListener("resize", () => setSize());
-    window.addEventListener("scroll", () => setCoords());
+    window.addEventListener('resize', () => setSize());
+    window.addEventListener('scroll', () => setCoords());
     setSize();
 
-    if (!context) throw new Error("No context");
+    if (!context) throw new Error('No context');
 
     const cols = colours[colourScheme];
 
@@ -60,7 +60,7 @@ export default function RainAnimation({
       }
 
       fall() {
-        if (!context) throw new Error("No context");
+        if (!context) throw new Error('No context');
         context.beginPath();
         context.lineWidth = this.rainDropTrailWidth;
         context.strokeStyle = this.strokeColor;
@@ -73,7 +73,7 @@ export default function RainAnimation({
 
         if (this.gravity > 3 && splashY && this.y + this.gravity >= splashY) {
           this.y = splashY;
-          this.splash(splashY);
+          this.splash(splashY - 5); //random 5px diff added here :shrug:
         } else {
           context.moveTo(this.x, this.y);
           this.y += this.gravity;
@@ -89,7 +89,7 @@ export default function RainAnimation({
       }
 
       splash(splashY: number) {
-        if (!context) throw new Error("No context");
+        if (!context) throw new Error('No context');
         const rnd = (Math.random() * this.gravity) / 5;
         context.moveTo(this.x, splashY);
         context.lineTo(this.x - rnd * 6, splashY - rnd * 3);
@@ -119,7 +119,7 @@ export default function RainAnimation({
       }
 
       rain() {
-        if (!context) throw new Error("No context");
+        if (!context) throw new Error('No context');
         if (this.fallingDrops.length < this.maxFallingDrops && this.isRaining) {
           this.dropRainDrop();
         }
@@ -149,8 +149,8 @@ export default function RainAnimation({
 
     return () => {
       clearInterval(interval);
-      window.removeEventListener("resize", () => setSize());
-      window.removeEventListener("scroll", () => setCoords());
+      window.removeEventListener('resize', () => setSize());
+      window.removeEventListener('scroll', () => setCoords());
     };
   }, [objRef, colourScheme]);
 

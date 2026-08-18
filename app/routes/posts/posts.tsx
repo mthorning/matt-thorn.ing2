@@ -33,6 +33,7 @@ export default function Posts({ loaderData }: Route.ComponentProps) {
     <>
       <div className={classes.tags}>
         {loaderData.tags.map(tag => <button
+          key={tag}
           type="button"
           onClick={() => onTagSelect(tag)}
           className={clsx({ [classes.selectedTag]: selectedTag === tag }
