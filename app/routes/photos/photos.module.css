@@ -1,7 +1,16 @@
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, max-content));
+  grid-gap: 16px;
+  justify-content: center;
+  padding-bottom: 48px;
+}
+
+@media (max-width: 640px) {
   .gallery {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, max-content));
-    grid-gap: 16px;
-    justify-content: center;
-    padding-bottom: 48px;
+    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+    grid-gap: 8px;
+    padding-bottom: 24px;
   }
+}
+

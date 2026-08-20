@@ -1,6 +1,7 @@
 .img {
   aspect-ratio: 1 / 1;
   object-fit: cover;
+  width: 100%;
 }
 .effects {
   opacity: 0.6;
