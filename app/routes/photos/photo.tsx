@@ -32,7 +32,7 @@ export default function Photos({ loaderData }: Route.ComponentProps) {
       </div>
       <div className={classes.gallery}>
         {loaderData?.galleryImages?.map((datum) => (
-          <Thumbnail key={datum.filename} datum={datum} />
+          <Thumbnail withEffects key={datum.filename} datum={datum} />
         ))}
       </div>
     </div>
