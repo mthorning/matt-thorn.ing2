@@ -6,6 +6,12 @@
   padding-bottom: 48px;
 }
 
+.img {
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  width: 100%;
+}
+
 @media (max-width: 640px) {
   .gallery {
     grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
@@ -13,4 +19,3 @@
     padding-bottom: 24px;
   }
 }
-
