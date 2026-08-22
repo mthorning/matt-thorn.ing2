@@ -65,8 +65,10 @@ export default function Photos({ loaderData }: Route.ComponentProps) {
       <div className={classes.selectedImage}>
         <img src={loaderData.images[selectedIdx]?.fullsizeUrl} />
       </div>
-      <ArrowBtn direction="prev" />
-      <ArrowBtn direction="next" />
+      <div className={classes.arrowButtons}>
+        <ArrowBtn direction="prev" />
+        <ArrowBtn direction="next" />
+      </div>
       <div className={classes.gallery}>
         {loaderData?.images?.map((datum, i) => (
           <button
