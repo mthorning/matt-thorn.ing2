@@ -1,6 +1,6 @@
 .container {
   background: linear-gradient(
-    var(--base-100) 30%,
+    var(--base-100) 80%,
     var(--base-300)
   );
 }
