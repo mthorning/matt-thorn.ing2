@@ -1,4 +1,4 @@
-import {
+import React, {
   createContext,
   useContext,
   useEffect,
@@ -67,7 +67,7 @@ function Timer() {
         const end = state.status !== 'playing' ? state.endTime : Date.now();
         const time = calcTime(state.startTime, end);
         setTime(time);
-      }, 500);
+      }, 1000);
     }
 
     return () => clearInterval(interval);
@@ -82,12 +82,12 @@ function Toolbar() {
     <div className={classes.toolbar}>
       <p>Flags remaining: {state.flagsRemaining}</p>
       {state.status !== 'idle' && (
-        <>
+        <span>
           <Timer />
           <button onClick={() => dispatch(['RESTART_GAME'])}>
             <FaUndoAlt />
           </button>
-        </>
+        </span>
       )}
     </div>
   );
@@ -106,11 +106,7 @@ function Cell({ cell }: { cell: Cell }) {
                 return cell.hasBomb ? <FaFlag color="var(--accent)" /> : '';
               case 'exploded':
                 return (
-                  <div className={classes.exploded}>
-                    <span className={classes.explosion}>
-                      <GiBrightExplosion />
-                    </span>
-                  </div>
+                  <GiBrightExplosion className={classes.exploded} />
                 );
               case undefined:
                 if (cell.hasBomb) return <FaBomb />;
@@ -179,21 +175,18 @@ export default function Minesweeper({ loaderData }: Route.ComponentProps) {
           {state.status === 'clear' && (
             <div className={classes.successMessage}>
               <h1>Clear!</h1>
-              <h3>{formatTime(calcTime(state.startTime, state.endTime))}</h3>
+              <h2>Completed in {formatTime(calcTime(state.startTime, state.endTime))}</h2>
             </div>
           )}
           {state.grid.map((row: Cell[], i: number) => (
-            <div
-              key={i}
-              className={classes.row}
-            >
+            <React.Fragment key={i} >
               {row.map((cell) => (
                 <Cell
                   key={cell.coords.toString()}
                   cell={cell}
                 />
               ))}
-            </div>
+            </React.Fragment>
           ))}
         </div>
       </div>
