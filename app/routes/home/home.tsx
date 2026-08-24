@@ -1,37 +1,117 @@
-import { useRef, type MutableRefObject, type ComponentProps, useState } from 'react';
+import { useRef, type RefObject, type ComponentProps, useState } from 'react';
 import clsx from 'clsx';
 import RainAnimation from './rain-animation';
 import classes from './home.module.css';
-import { FaGithub, FaLinkedin, FaBluesky, FaBars } from 'react-icons/fa6';
+import {
+  FaBomb,
+  FaGithub,
+  FaLinkedin,
+  FaBluesky,
+  FaBars,
+  FaArrowLeft,
+} from 'react-icons/fa6';
 import { Link, useLocation } from 'react-router';
+import Minesweeper from './minesweeper/minesweeper';
+
+type View = null | 'about' | 'links' | 'minesweeper';
+type CardSide = 'front' | 'back';
 
 function A(props: ComponentProps<'a'>) {
-  return <a {...props} target="_blank" rel="noopener noreferrer" />;
+  return (
+    <a
+      {...props}
+      target="_blank"
+      rel="noopener noreferrer"
+    />
+  );
 }
 
-function LinksCard({ toggle }: { toggle: () => void }) {
-  return (
+function BackCard({ currentView, showAbout, playSweeper, showGames }: {
+  currentView: View;
+  showGames: boolean;
+  showAbout: () => void;
+  playSweeper: () => void;
+}) {
+  return currentView === 'links' ? (
     <div className={classes.card}>
+      {showGames && (
+        <button
+          type="button"
+          className={clsx(classes.linkButton, classes.topRightButton)}
+          onClick={playSweeper}
+        >
+          <FaBomb />
+        </button>
+      )}
       <div className={classes.cardContent}>
         <div className={classes.linksContent}>
           <Link to="/posts">Posts</Link>
           <Link to="/photos">Photos</Link>
-          <button className={classes.linkButton} type="button" onClick={toggle}>About</button>
+          <button
+            className={classes.linkButton}
+            type="button"
+            onClick={showAbout}
+          >
+            About
+          </button>
         </div>
       </div>
-      <div className={classes.cardFooter}>
-      </div>
+      <div className={classes.cardFooter}></div>
     </div>
-  );
+  ) : null;
 }
 
-function About() {
+function FrontCard({
+  currentView,
+  showLinks,
+  exitGame,
+}: {
+  currentView: View;
+  showLinks: () => void;
+  exitGame: () => void;
+}) {
+  return currentView === 'about' ? (
+    <AboutCard {...{ showLinks }} />
+  ) : currentView === 'minesweeper' ? (
+    <Minesweeper
+      bombs={10}
+      gridSize={10}
+      cellSize={48}
+      ExitButton={() => {
+        return <button
+          type="button"
+          className={classes.linkButton}
+          onClick={() => {
+            exitGame();
+          }}
+        >
+          <FaArrowLeft />
+        </button>
+      }}
+    />
+  ) : null;
+}
+
+function AboutCard({ showLinks }: { showLinks: () => void }) {
   return (
     <div className={classes.card}>
+      <button
+        type="button"
+        className={clsx(classes.linkButton, classes.topRightButton)}
+        onClick={() => {
+          showLinks();
+        }}
+      >
+        <FaBars />
+      </button>
       <div className={classes.cardContent}>
         <div className={classes.aboutContent}>
           <div className={classes.aboutName}>
-            <img className={classes.profilePic} src="https://github.com/mthorning.png" alt="Profile Photo" />
+            <img
+              className={classes.profilePic}
+              src="https://github.com/mthorning.png"
+              alt="Profile Photo"
+            />
             <h1>Matt Thorning</h1>
             <h3>Software engineer</h3>
           </div>
@@ -70,35 +150,66 @@ function About() {
 function BusinessCard({
   objRef,
 }: {
-  objRef: MutableRefObject<HTMLDivElement | null>;
+  objRef: RefObject<HTMLDivElement | null>;
 }) {
   const location = useLocation();
-  const search = new URLSearchParams(location.search)
+  const search = new URLSearchParams(location.search);
 
-  const [currentView, setCurrentView] = useState<'about' | 'links'>(
+  const [showGames] = useState(search.get('games') === 'true');
+
+  const [currentView, setCurrentView] = useState<View>(
     search.get('view') === 'links' ? 'links' : 'about'
   );
+  const [cardSide, setCardSide] = useState<CardSide>(
+    search.get('view') === 'links' ? 'back' : 'front'
+  );
 
-  const toggleView = () => {
-    setCurrentView((prev) => (prev === 'about' ? 'links' : 'about'));
+  const [addTransition, setAddTransition] = useState(false);
+  const [increaseDimensions, setIncreaseDimensions] = useState(false);
+  const playSweeper = () => {
+    setAddTransition(true);
+    setCardSide('front');
+    setTimeout(() => {
+      setIncreaseDimensions(true);
+      setTimeout(() => setCurrentView('minesweeper'), 300);
+    }, 600);
   };
+
+  const exitGame = () => {
+    setCurrentView(null);
+    setCardSide('back');
+    setTimeout(() => {
+      setTimeout(() => setCurrentView('links'), 300);
+      setIncreaseDimensions(false);
+    }, 600);
+  }
+
+  const [showAbout, showLinks] = [
+    ['front', 'about'] as const,
+    ['back', 'links'] as const,
+  ].map(([cs, cv]) => {
+    return () => {
+      setCardSide(cs);
+      setCurrentView(cv);
+    };
+  });
 
   return (
     <div
       ref={objRef}
       className={clsx(classes.perspectiveContainer, {
-        [classes.showAbout]: currentView === 'about',
-        [classes.showLinks]: currentView === 'links',
+        [classes.showFront]: cardSide === 'front',
+        [classes.showBack]: cardSide === 'back',
+        [classes.addTransition]: addTransition,
+        [classes.increaseDimensions]: increaseDimensions,
       })}
     >
-      <div className={clsx(classes.box, classes.links)} >
-        <LinksCard toggle={toggleView} />
+      <div className={clsx(classes.box, classes.front, classes.about)}>
+        <FrontCard {...{ currentView, showLinks, exitGame }} />
       </div>
-      <div className={clsx(classes.box, classes.about)} >
-        <button type="button" className={clsx(classes.linkButton, classes.hamburgerButton)} onClick={toggleView}>
-          <FaBars />
-        </button>
-        <About />
+
+      <div className={clsx(classes.box, classes.back, classes.links)}>
+        <BackCard {...{ currentView, showAbout, playSweeper, showGames }} />
       </div>
     </div>
   );

@@ -16,10 +16,26 @@
   height: 300px;
 }
 
+.addTransition {
+  transition: width calc(var(--transition-speed, 500) * 1ms) ease, height calc(var(--transition-speed, 500) * 1ms) ease;
+}
+
+.increaseDimensions {
+  height: 600px;
+  width: 600px;
+  max-width: 600px;
+}
+
 .zeroWidth {
   width: 0!important;
   overflow: hidden;
   box-sizing: border-box;
+}
+
+.topRightButton {
+  position: absolute;
+  top: 16px;
+  right: 16px;
 }
 
 .linkButton {
@@ -27,12 +43,6 @@
   border: none;
   color: var(--base-content);
   cursor: pointer;
-}
-
-.hamburgerButton {
-  position: absolute;
-  top: 16px;
-  right: 16px;
 }
 
 .linkButton:hover {
@@ -48,7 +58,7 @@
   background: var(--base-200);
   border: 2px double var(--secondary);
 
-  transition: transform calc(var(--const-transition-speed, 500) * 1ms) ease-in-out;
+  transition: transform calc(var(--transition-speed, 500) * 1ms) ease-in-out;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
@@ -155,23 +165,23 @@
   margin: 0 8px;
 }
 
-.showAbout {
-  .about {
+.showFront {
+  .front {
     transform: rotateY(0deg);
     pointer-events: auto;
   }
-  .links {
+  .back {
     transform: rotateY(-180deg);
     pointer-events: none;
   }
 }
 
-.showLinks {
-  .links {
+.showBack {
+  .back {
     transform: rotateY(0deg);
     pointer-events: auto;
   }
-  .about {
+  .front {
     transform: rotateY(180deg);
     pointer-events: none;
   }

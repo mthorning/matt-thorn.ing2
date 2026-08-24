@@ -12,6 +12,5 @@ export default [
     route('/posts/:slug', 'routes/posts/post.tsx'),
     route('/photos', 'routes/photos/photos.tsx'),
     route('/photos/:filename', 'routes/photos/photo.tsx'),
-    route('/minesweeper', 'routes/minesweeper/minesweeper.tsx'),
   ]),
 ] satisfies RouteConfig;

@@ -10,24 +10,6 @@ import { FaBomb, FaFlag, FaUndoAlt } from 'react-icons/fa';
 import { GiBrightExplosion } from 'react-icons/gi';
 import { newGameState, useGameState } from './state';
 import type { Action, Cell, State } from './state';
-import type { Route } from './+types/minesweeper';
-
-const GRID_ROWS = 10;
-const GRID_COLS = 10;
-const TOTAL_BOMBS = 10;
-
-export function loader() {
-  const opts = {
-    bombs: TOTAL_BOMBS,
-    grid: {
-      rows: GRID_ROWS,
-      columns: GRID_COLS,
-    },
-  };
-  const initialState = newGameState(opts);
-
-  return { initialState, opts };
-}
 
 const context = createContext<{ state: State; dispatch: Dispatch<Action> }>({
   state: {
@@ -55,10 +37,12 @@ function Timer() {
   const { state } = useContext(context);
   const [time, setTime] = useState<Time>([0, 0]);
 
-  const deps = state.status === 'idle'
-    ? [undefined, undefined] : state.status === 'playing'
-      ? [state.startTime, undefined]
-      : [state.startTime, state.endTime]
+  const deps =
+    state.status === 'idle'
+      ? [undefined, undefined]
+      : state.status === 'playing'
+        ? [state.startTime, undefined]
+        : [state.startTime, state.endTime];
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -76,19 +60,19 @@ function Timer() {
   return <p>{formatTime(time)}</p>;
 }
 
-function Toolbar() {
+function Toolbar({ ExitButton }: { ExitButton: React.ElementType }) {
   const { state, dispatch } = useContext(context);
   return (
     <div className={classes.toolbar}>
       <p>Flags remaining: {state.flagsRemaining}</p>
-      {state.status !== 'idle' && (
+      {state.status !== 'idle' ? (
         <span>
           <Timer />
           <button onClick={() => dispatch(['RESTART_GAME'])}>
             <FaUndoAlt />
           </button>
         </span>
-      )}
+      ) : <ExitButton />}
     </div>
   );
 }
@@ -105,9 +89,7 @@ function Cell({ cell }: { cell: Cell }) {
               case 'flagged':
                 return cell.hasBomb ? <FaFlag color="var(--accent)" /> : '';
               case 'exploded':
-                return (
-                  <GiBrightExplosion className={classes.exploded} />
-                );
+                return <GiBrightExplosion className={classes.exploded} />;
               case undefined:
                 if (cell.hasBomb) return <FaBomb />;
               default:
@@ -163,23 +145,47 @@ function Cell({ cell }: { cell: Cell }) {
     </div>
   );
 }
-export default function Minesweeper({ loaderData }: Route.ComponentProps) {
-  const { opts, initialState } = loaderData;
+
+export default function Minesweeper({
+  bombs,
+  gridSize,
+  cellSize,
+  ExitButton,
+}: {
+  bombs: number;
+  gridSize: number;
+  cellSize: number;
+  ExitButton: React.ElementType;
+}) {
+  const opts = { bombs, grid: { columns: gridSize, rows: gridSize } };
+  const initialState = newGameState(opts);
   const [state, dispatch] = useGameState({ opts, initialState });
 
   return (
     <context.Provider value={{ state, dispatch }}>
-      <div className={classes.container}>
-        <Toolbar />
+      <div
+        className={classes.container}
+        style={
+          {
+            '--minesweeper-columns': opts.grid.columns,
+            '--minesweeper-rows': opts.grid.rows,
+            '--minesweeper-cellSize': cellSize + 'px',
+          } as React.CSSProperties
+        }
+      >
+        <Toolbar {...{ ExitButton }} />
         <div className={classes.grid}>
           {state.status === 'clear' && (
             <div className={classes.successMessage}>
               <h1>Clear!</h1>
-              <h2>Completed in {formatTime(calcTime(state.startTime, state.endTime))}</h2>
+              <h2>
+                Completed in{' '}
+                {formatTime(calcTime(state.startTime, state.endTime))}
+              </h2>
             </div>
           )}
           {state.grid.map((row: Cell[], i: number) => (
-            <React.Fragment key={i} >
+            <React.Fragment key={i}>
               {row.map((cell) => (
                 <Cell
                   key={cell.coords.toString()}
