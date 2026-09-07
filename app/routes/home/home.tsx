@@ -1,4 +1,4 @@
-import { useRef, type RefObject, type ComponentProps, useState } from 'react';
+import { useRef, type RefObject, type ComponentProps, useState, useMemo } from 'react';
 import clsx from 'clsx';
 import RainAnimation from './rain-animation';
 import classes from './home.module.css';
@@ -149,8 +149,10 @@ function AboutCard({ showLinks }: { showLinks: () => void }) {
 
 function BusinessCard({
   objRef,
+  rainControls
 }: {
   objRef: RefObject<HTMLDivElement | null>;
+  rainControls: { start(): void, stop(): void },
 }) {
   const location = useLocation();
   const search = new URLSearchParams(location.search);
@@ -167,6 +169,7 @@ function BusinessCard({
   const [addTransition, setAddTransition] = useState(false);
   const [increaseDimensions, setIncreaseDimensions] = useState(false);
   const playSweeper = () => {
+    rainControls.stop();
     setAddTransition(true);
     setCardSide('front');
     setTimeout(() => {
@@ -181,6 +184,7 @@ function BusinessCard({
     setTimeout(() => {
       setTimeout(() => setCurrentView('links'), 300);
       setIncreaseDimensions(false);
+      rainControls.start();
     }, 600);
   }
 
@@ -217,10 +221,17 @@ function BusinessCard({
 
 export default function Home() {
   const ref = useRef<HTMLDivElement>(null);
+
+  const [isRaining, setIsRaining] = useState(true);
+  const rainControls = useMemo(() => ({
+    start() { setIsRaining(true); },
+    stop() { setIsRaining(false); },
+  }), [isRaining]);
+
   return (
     <div className={classes.container}>
-      <RainAnimation objRef={ref} />
-      <BusinessCard objRef={ref} />
+      <RainAnimation objRef={ref} isRaining={isRaining} />
+      <BusinessCard objRef={ref} rainControls={rainControls} />
     </div>
   );
 }
