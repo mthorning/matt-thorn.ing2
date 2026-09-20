@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { colours } from '~/styles/css-vars';
 import { useColourScheme } from '~/hooks';
 
@@ -11,7 +11,7 @@ class RainDrop {
   hasFallen: boolean = false;
   baseColour: string;
   highlightColours: string[];
-  rainDropTrailWidth: number = 2;
+  rainDropTrailWidth: number = 1;
   strokeColor: string;
   context: CanvasRenderingContext2D | null;
   objCoords: DOMRect | undefined;
@@ -32,7 +32,7 @@ class RainDrop {
   init() {
     this.y = 0;
     this.x = Math.random() * innerWidth;
-    this.gravity = Math.random() * 10;
+    this.gravity = Math.max(0.2, Math.random()) * 10;
     this.hasFallen = false;
     this.strokeColor = this.generateColor();
   }
@@ -49,12 +49,12 @@ class RainDrop {
         : undefined
       : window.scrollY;
 
-    if (this.gravity > 3 && splashY && this.y + this.gravity >= splashY) {
+    if (this.gravity > 4 && splashY && this.y + this.gravity >= splashY) {
       this.y = splashY;
       this.splash(splashY - 5); //random 5px diff added here :shrug:
     } else {
       this.context.moveTo(this.x, this.y);
-      this.y += this.gravity;
+      this.y += this.gravity / 1.5;
       this.context.lineTo(this.x, this.y);
       this.context.stroke();
       this.hasFallen = this.y >= innerHeight;
@@ -70,10 +70,10 @@ class RainDrop {
     if (!this.context) throw new Error('No context');
     const rnd = (Math.random() * this.gravity) / 5;
     this.context.moveTo(this.x, splashY);
-    this.context.lineTo(this.x - rnd * 6, splashY - rnd * 3);
+    this.context.lineTo(this.x - rnd * 4, splashY - rnd * 3);
     this.context.stroke();
     this.context.moveTo(this.x, splashY);
-    this.context.lineTo(this.x + rnd * 6, splashY - rnd * 3);
+    this.context.lineTo(this.x + rnd * 4, splashY - rnd * 3);
     this.context.stroke();
     this.hasFallen = true;
   }
@@ -85,11 +85,13 @@ class Cloud {
   maxFallingDrops: number;
   initialMaxFallingDrops: number;
   context: CanvasRenderingContext2D;
+  onRainStop: () => void;
 
-  constructor(initialRainDrops: number, maxFallingDrops: number, makeNewRainDrop: () => RainDrop, context: CanvasRenderingContext2D) {
+  constructor(initialRainDrops: number, maxFallingDrops: number, makeNewRainDrop: () => RainDrop, context: CanvasRenderingContext2D, onRainStop: () => void) {
     this.context = context;
     this.maxFallingDrops = maxFallingDrops;
     this.initialMaxFallingDrops = maxFallingDrops;
+    this.onRainStop = onRainStop;
     for (let i = 0; i < initialRainDrops; i++) {
       this.rainDrops.push(makeNewRainDrop());
     }
@@ -109,6 +111,10 @@ class Cloud {
         this.rainDrops.push(rainDrop);
       }
     });
+
+    if (this.fallingDrops.length === 0) {
+      this.onRainStop();
+    }
   }
 
   stopRain() {
@@ -155,37 +161,44 @@ export default function RainAnimation({
     };
   }, [setObjCoords]);
 
+  const interval = useRef<NodeJS.Timeout>(null);
+  const onRainStop = () => {
+    if (interval.current) clearInterval(interval.current);
+  }
+
   const cloud = useMemo(() => {
     if (!context) return;
     const cols = colours[colourScheme];
 
     const makeNewRainDrop = () => new RainDrop(cols, context, objCoords)
-    return new Cloud(Math.max(window.innerWidth, 1200), 500, makeNewRainDrop, context);
+    return new Cloud(Math.max(window.innerWidth, 1200), 500, makeNewRainDrop, context, onRainStop);
   }, [objCoords, context, colourScheme])
 
   useEffect(() => {
-    if (!context) return;
+    if (!context || interval.current) return;
 
-    const interval = setInterval(() => {
-      context.clearRect(
-        0,
-        0,
-        canvasRef.current!.width,
-        canvasRef.current!.height
-      );
-      cloud?.rain();
-    }, 15);
+    if (isRaining) {
+      interval.current = setInterval(() => {
+        context.clearRect(
+          0,
+          0,
+          canvasRef.current!.width,
+          canvasRef.current!.height
+        );
+        cloud?.rain();
+      }, 20);
+    }
 
     return () => {
-      clearInterval(interval);
+      interval.current && clearInterval(interval.current);
     };
   }, [context, cloud]);
 
   useEffect(() => {
-    if(isRaining && cloud?.maxFallingDrops === 0) {
+    if (isRaining && cloud?.maxFallingDrops === 0) {
       cloud.restartRain();
     }
-    if(!isRaining && cloud?.maxFallingDrops !== 0) {
+    if (!isRaining && cloud?.maxFallingDrops !== 0) {
       cloud?.stopRain();
     }
   }, [isRaining, cloud])
