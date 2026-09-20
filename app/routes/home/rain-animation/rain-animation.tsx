@@ -1,0 +1,86 @@
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react';
+import { colours } from '~/styles/css-vars';
+import { useColourScheme } from '~/hooks';
+import { Cloud } from './cloud';
+import { RainDrop } from './raindrop';
+import { useCanvas } from '../utils/useCanvas';
+
+export default function RainAnimation({
+  objRef,
+  isRaining,
+}: {
+  objRef: RefObject<HTMLElement | null>;
+  isRaining: boolean;
+}) {
+  const [colourScheme] = useColourScheme();
+
+  const [objCoords, setObjCoords] = useState<DOMRect | undefined>();
+  useEffect(() => {
+    function setCoords() {
+      setObjCoords(objRef?.current?.getBoundingClientRect());
+    }
+
+    function setSize() {
+      if (canvasRef.current) {
+        canvasRef.current.height = innerHeight;
+        canvasRef.current.width = innerWidth;
+      }
+      setCoords();
+    }
+    window.addEventListener('resize', () => setSize());
+    window.addEventListener('scroll', () => setCoords());
+    setSize();
+
+    return () => {
+      window.removeEventListener('resize', () => setSize());
+      window.removeEventListener('scroll', () => setCoords());
+    };
+  }, [setObjCoords]);
+
+  const { canvasRef, context, stopTick, restartTick } = useCanvas(
+    {
+    tickLength: 20,
+    onTick() {
+      cloud?.rain();
+    },
+  });
+
+  useEffect(() => stopTick, []);
+
+  const onRainStop = () => {
+    stopTick();
+  };
+
+  const cloud = useMemo(() => {
+    if (!context) return;
+    const cols = colours[colourScheme];
+
+    const makeNewRainDrop = () => new RainDrop(cols, context, objCoords);
+    return new Cloud(
+      Math.max(window.innerWidth, 1200),
+      500,
+      makeNewRainDrop,
+      context,
+      onRainStop
+    );
+  }, [objCoords, context, colourScheme]);
+
+  useEffect(() => {
+    if (isRaining && cloud?.maxFallingDrops === 0) {
+      restartTick();
+      cloud.restartRain();
+    }
+    if (!isRaining && cloud?.maxFallingDrops !== 0) {
+      cloud?.stopRain();
+    }
+  }, [isRaining, cloud]);
+
+  return <canvas ref={canvasRef} />;
+}

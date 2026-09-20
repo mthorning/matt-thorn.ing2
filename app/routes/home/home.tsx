@@ -1,7 +1,14 @@
-import { useRef, type RefObject, type ComponentProps, useState, useMemo } from 'react';
+import {
+  useRef,
+  type RefObject,
+  type ComponentProps,
+  useState,
+  useMemo,
+} from 'react';
 import clsx from 'clsx';
-import RainAnimation from './rain-animation';
+import RainAnimation from './rain-animation/rain-animation';
 import classes from './home.module.css';
+import { GiJBrick } from 'react-icons/gi';
 import {
   FaBomb,
   FaGithub,
@@ -12,8 +19,10 @@ import {
 } from 'react-icons/fa6';
 import { Link, useLocation } from 'react-router';
 import Minesweeper from './minesweeper/minesweeper';
+import Tetris from './tetris/tetris';
 
-type View = null | 'about' | 'links' | 'minesweeper';
+type Game = 'minesweeper' | 'tetris';
+type View = null | 'about' | 'links' | Game;
 type CardSide = 'front' | 'back';
 
 function A(props: ComponentProps<'a'>) {
@@ -26,22 +35,36 @@ function A(props: ComponentProps<'a'>) {
   );
 }
 
-function BackCard({ currentView, showAbout, playSweeper, showGames }: {
+function BackCard({
+  currentView,
+  showAbout,
+  playGame,
+  showGames,
+}: {
   currentView: View;
   showGames: boolean;
   showAbout: () => void;
-  playSweeper: () => void;
+  playGame: (game: Game) => void;
 }) {
   return currentView === 'links' ? (
     <div className={classes.card}>
       {showGames && (
-        <button
-          type="button"
-          className={clsx(classes.linkButton, classes.topRightButton)}
-          onClick={playSweeper}
-        >
-          <FaBomb />
-        </button>
+        <div className={classes.gameBtns}>
+          <button
+            type="button"
+            className={classes.linkButton}
+            onClick={() => playGame('tetris')}
+          >
+            <GiJBrick />
+          </button>
+          <button
+            type="button"
+            className={classes.linkButton}
+            onClick={() => playGame('minesweeper')}
+          >
+            <FaBomb />
+          </button>
+        </div>
       )}
       <div className={classes.cardContent}>
         <div className={classes.linksContent}>
@@ -66,30 +89,37 @@ function FrontCard({
   showLinks,
   exitGame,
 }: {
-  currentView: View;
+  currentView: Omit<View, 'links'>;
   showLinks: () => void;
   exitGame: () => void;
 }) {
-  return currentView === 'about' ? (
-    <AboutCard {...{ showLinks }} />
-  ) : currentView === 'minesweeper' ? (
-    <Minesweeper
-      bombs={10}
-      gridSize={10}
-      cellSize={48}
-      ExitButton={() => {
-        return <button
-          type="button"
-          className={classes.linkButton}
-          onClick={() => {
-            exitGame();
-          }}
-        >
-          <FaArrowLeft />
-        </button>
-      }}
-    />
-  ) : null;
+  switch (currentView) {
+    case 'about':
+      return <AboutCard {...{ showLinks }} />
+    case 'minesweeper':
+      return <Minesweeper
+        bombs={10}
+        gridSize={10}
+        cellSize={48}
+        ExitButton={() => {
+          return (
+            <button
+              type="button"
+              className={classes.linkButton}
+              onClick={() => {
+                exitGame();
+              }}
+            >
+              <FaArrowLeft />
+            </button>
+          );
+        }}
+      />;
+    case 'tetris':
+      return <Tetris />
+    default:
+      return null;
+  }
 }
 
 function AboutCard({ showLinks }: { showLinks: () => void }) {
@@ -149,10 +179,10 @@ function AboutCard({ showLinks }: { showLinks: () => void }) {
 
 function BusinessCard({
   objRef,
-  rainControls
+  rainControls,
 }: {
   objRef: RefObject<HTMLDivElement | null>;
-  rainControls: { start(): void, stop(): void },
+  rainControls: { start(): void; stop(): void };
 }) {
   const location = useLocation();
   const search = new URLSearchParams(location.search);
@@ -168,13 +198,13 @@ function BusinessCard({
 
   const [addTransition, setAddTransition] = useState(false);
   const [increaseDimensions, setIncreaseDimensions] = useState(false);
-  const playSweeper = () => {
+  const playGame = (game: Game) => {
     rainControls.stop();
     setAddTransition(true);
     setCardSide('front');
     setTimeout(() => {
       setIncreaseDimensions(true);
-      setTimeout(() => setCurrentView('minesweeper'), 300);
+      setTimeout(() => setCurrentView(game), 300);
     }, 600);
   };
 
@@ -186,7 +216,7 @@ function BusinessCard({
       setIncreaseDimensions(false);
       rainControls.start();
     }, 600);
-  }
+  };
 
   const [showAbout, showLinks] = [
     ['front', 'about'] as const,
@@ -213,7 +243,7 @@ function BusinessCard({
       </div>
 
       <div className={clsx(classes.box, classes.back, classes.links)}>
-        <BackCard {...{ currentView, showAbout, playSweeper, showGames }} />
+        <BackCard {...{ currentView, showAbout, playGame, showGames }} />
       </div>
     </div>
   );
@@ -223,15 +253,28 @@ export default function Home() {
   const ref = useRef<HTMLDivElement>(null);
 
   const [isRaining, setIsRaining] = useState(true);
-  const rainControls = useMemo(() => ({
-    start() { setIsRaining(true); },
-    stop() { setIsRaining(false); },
-  }), [isRaining]);
+  const rainControls = useMemo(
+    () => ({
+      start() {
+        setIsRaining(true);
+      },
+      stop() {
+        setIsRaining(false);
+      },
+    }),
+    [isRaining]
+  );
 
   return (
     <div className={classes.container}>
-      <RainAnimation objRef={ref} isRaining={isRaining} />
-      <BusinessCard objRef={ref} rainControls={rainControls} />
+      <RainAnimation
+        objRef={ref}
+        isRaining={isRaining}
+      />
+      <BusinessCard
+        objRef={ref}
+        rainControls={rainControls}
+      />
     </div>
   );
 }
