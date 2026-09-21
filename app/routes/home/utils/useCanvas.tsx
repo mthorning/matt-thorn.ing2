@@ -1,51 +1,25 @@
-import { useCallback, useEffect, useRef, type RefObject } from 'react';
+import { useRef, type RefObject } from 'react';
 
-interface useCanvasArgs {
-  onTick: () => void;
-  tickLength: number;
-}
+export type Canvas = Record<'width' | 'height', number>;
 
 interface useCanvasRtn {
   canvasRef: RefObject<HTMLCanvasElement | null>;
+  canvas: Canvas | null;
   context: CanvasRenderingContext2D | null;
-  stopTick: () => void;
-  restartTick: () => void;
 }
 
-export function useCanvas({
-  onTick,
-  tickLength,
-}: useCanvasArgs): useCanvasRtn {
+export function useCanvas(): useCanvasRtn {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const context = canvasRef.current?.getContext('2d') ?? null;
-  const interval = useRef<NodeJS.Timeout>(null);
 
-  const stopTick = () => {
-    if (interval.current) clearInterval(interval.current);
-  }
-
-  const startTick = useCallback(() => {
-    if (!context) return;
-
-    stopTick();
-    interval.current = setInterval(() => {
-      context.clearRect(
-        0,
-        0,
-        canvasRef.current!.width,
-        canvasRef.current!.height
-      );
-      console.log('tick')
-      onTick();
-    }, tickLength);
-  }, [context, onTick]);
-
-  useEffect( startTick, [startTick]);
+  const canvas = canvasRef.current && canvasRef.current.width && canvasRef.current.height ?  {
+      width: canvasRef.current.width,
+      height: canvasRef.current.height,
+  } : null;
 
   return {
     context,
     canvasRef,
-    stopTick,
-    restartTick: startTick,
+    canvas,
   };
 }

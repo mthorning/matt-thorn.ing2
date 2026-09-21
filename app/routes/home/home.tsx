@@ -53,16 +53,16 @@ function BackCard({
           <button
             type="button"
             className={classes.linkButton}
-            onClick={() => playGame('tetris')}
+            onClick={() => playGame('minesweeper')}
           >
-            <GiJBrick />
+            <FaBomb />
           </button>
           <button
             type="button"
             className={classes.linkButton}
-            onClick={() => playGame('minesweeper')}
+            onClick={() => playGame('tetris')}
           >
-            <FaBomb />
+            <GiJBrick />
           </button>
         </div>
       )}

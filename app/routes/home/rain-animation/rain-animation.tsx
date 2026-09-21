@@ -1,16 +1,10 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type RefObject,
-} from 'react';
+import { useEffect, useMemo, useState, type RefObject } from 'react';
 import { colours } from '~/styles/css-vars';
 import { useColourScheme } from '~/hooks';
 import { Cloud } from './cloud';
 import { RainDrop } from './raindrop';
 import { useCanvas } from '../utils/useCanvas';
+import { useTick } from '../utils/useTick';
 
 export default function RainAnimation({
   objRef,
@@ -44,8 +38,11 @@ export default function RainAnimation({
     };
   }, [setObjCoords]);
 
-  const { canvasRef, context, stopTick, restartTick } = useCanvas(
-    {
+  const { canvas, canvasRef, context } = useCanvas();
+
+  const { stopTick, restartTick } = useTick({
+    context,
+    canvas,
     tickLength: 20,
     onTick() {
       cloud?.rain();
