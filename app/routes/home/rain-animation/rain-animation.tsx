@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useState, type RefObject } from 'react';
 import { colours } from '~/styles/css-vars';
 import { useColourScheme } from '~/hooks';
 import { Cloud } from './cloud';
@@ -40,17 +40,6 @@ export default function RainAnimation({
 
   const { canvas, canvasRef, context } = useCanvas();
 
-  const { stopTick, restartTick } = useTick({
-    context,
-    canvas,
-    tickLength: 20,
-    onTick() {
-      cloud?.rain();
-    },
-  });
-
-  useEffect(() => stopTick, []);
-
   const onRainStop = () => {
     stopTick();
   };
@@ -69,9 +58,26 @@ export default function RainAnimation({
     );
   }, [objCoords, context, colourScheme]);
 
+  const onTick = useCallback(() => {
+    cloud?.rain();
+  }, [cloud]);
+
+  const { stopTick, startTick } = useTick({
+    context,
+    canvas,
+    tickLength: 20,
+    onTick,
+  });
+
+  useEffect(() => {
+    startTick();
+    return stopTick
+  }, [startTick, stopTick]);
+
+
   useEffect(() => {
     if (isRaining && cloud?.maxFallingDrops === 0) {
-      restartTick();
+      startTick();
       cloud.restartRain();
     }
     if (!isRaining && cloud?.maxFallingDrops !== 0) {

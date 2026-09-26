@@ -1,4 +1,5 @@
 import {
+    useCallback,
   useEffect,
   useMemo,
 } from 'react';
@@ -20,19 +21,24 @@ export default function Tetris() {
     });
   }, [canvas, context]);
 
-  const { stopTick } = useTick({
+  const onTick = useCallback(() => {
+    if (game) {
+      game.draw();
+    }
+  }, [game]);
+
+  const { stopTick, startTick } = useTick({
     canvas,
     context,
     tickLength: 50,
-    onTick() {
-      if (game) {
-        game.draw();
-      }
-    },
+    onTick,
   });
 
 
-  useEffect(() => stopTick, []);
+  useEffect(() => {
+    startTick();
+    return stopTick;
+  }, [startTick, stopTick]);
 
   const [containerRef, containerWidth, containerHeight] = useContainer();
   return (

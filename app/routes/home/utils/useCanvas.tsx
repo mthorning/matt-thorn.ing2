@@ -1,4 +1,4 @@
-import { useRef, type RefObject } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 
 export type Canvas = Record<'width' | 'height', number>;
 
@@ -10,12 +10,26 @@ interface useCanvasRtn {
 
 export function useCanvas(): useCanvasRtn {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const context = canvasRef.current?.getContext('2d') ?? null;
+  const [context, setContext] = useState<CanvasRenderingContext2D | null>(null);
+  const [canvas, setCanvas] = useState<Canvas | null>(null);
 
-  const canvas = canvasRef.current && canvasRef.current.width && canvasRef.current.height ?  {
-      width: canvasRef.current.width,
-      height: canvasRef.current.height,
-  } : null;
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el) return;
+
+    function update() {
+      if (!el || !el.width || !el.height) return;
+      setContext(el.getContext('2d'));
+      setCanvas({ width: el.width, height: el.height });
+    }
+
+    update();
+
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+
+    return () => observer.disconnect();
+  }, []);
 
   return {
     context,

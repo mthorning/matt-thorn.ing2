@@ -9,8 +9,8 @@ interface useTickArgs {
 }
 
 interface useTickRtn {
+  startTick: () => void;
   stopTick: () => void;
-  restartTick: () => void;
 }
 
 export function useTick({
@@ -26,25 +26,21 @@ export function useTick({
   }
 
   const startTick = useCallback(() => {
-    if (!context || !canvas) return;
-
     stopTick();
     interval.current = setInterval(() => {
-      context.clearRect(
+      context?.clearRect(
         0,
         0,
-        canvas.width,
-        canvas.height,
+        canvas?.width ?? 0,
+        canvas?.height ?? 0,
       );
 
       onTick();
     }, tickLength);
-  }, [context, onTick]);
-
-  useEffect(startTick, [startTick]);
+  }, [context, canvas, onTick]);
 
   return {
     stopTick,
-    restartTick: startTick,
+    startTick,
   };
 }
